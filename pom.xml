@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      Reactor parent for the Spring AI AgentCore samples. Building this POM
+      compiles, tests, and packages both sample applications in one pass:
+
+          mvn clean install
+
+      It also centralizes the shared platform versions (Spring Boot, Spring AI,
+      Spring AI AgentCore, Resilience4j) and the imported BOMs so the child
+      modules stay lean.
+    -->
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.amazonaws.samples</groupId>
+    <artifactId>spring-ai-agentcore-samples</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>spring-ai-agentcore-samples</name>
+    <description>Parent reactor for the Amazon Bedrock + Spring AI + AgentCore sample applications</description>
+
+    <modules>
+        <module>code/autonomous-agent</module>
+        <module>code/idp-agent</module>
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-ai.version>2.0.0</spring-ai.version>
+        <spring-ai-agentcore.version>2.0.0</spring-ai-agentcore.version>
+        <resilience4j.version>2.4.0</resilience4j.version>
+        <!-- Optional NVD API key for the `owasp` SCA profile (set via -Dnvd.api.key in CI) -->
+        <nvd.api.key></nvd.api.key>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Aligns all Spring AI module versions -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Aligns all Spring AI AgentCore module versions -->
+            <dependency>
+                <groupId>org.springaicommunity</groupId>
+                <artifactId>spring-ai-agentcore-bom</artifactId>
+                <version>${spring-ai-agentcore.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Aligns Resilience4j modules -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bom</artifactId>
+                <version>${resilience4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!--
+      Software Composition Analysis (SCA) for Java dependencies. Run in CI:
+
+          mvn -Powasp verify
+
+      It scans the full dependency tree against the NVD and fails the build on any CVE at
+      or above CVSS 7 (High). The first run downloads the NVD database (slow); provide an
+      NVD API key via -Dnvd.api.key for reliability. Not bound to the default build so local
+      developer builds stay fast.
+    -->
+    <profiles>
+        <profile>
+            <id>owasp</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>10.0.4</version>
+                        <configuration>
+                            <failBuildOnCVSS>7</failBuildOnCVSS>
+                            <nvdApiKey>${nvd.api.key}</nvdApiKey>
+                            <formats>
+                                <format>HTML</format>
+                                <format>SARIF</format>
+                            </formats>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
