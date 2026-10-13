@@ -1,0 +1,25 @@
+FORM 1040 — U.S. INDIVIDUAL INCOME TAX RETURN (summary)
+
+Taxpayer: Morgan T. Ellis
+Tax Year: 2025
+Filing Status: Single
+
+INCOME
+  Wages (W-2, Box 1): $84,500
+  Interest income (1099-INT): $320
+  Dividends (1099-DIV): (not provided)
+  Total income: (not computed on this copy)
+
+ADJUSTMENTS / DEDUCTIONS
+  Standard deduction: $14,600
+  Taxable income: (not computed)
+
+TAX AND PAYMENTS
+  Federal income tax withheld (W-2, Box 2): $11,240
+  Estimated payments: $0
+  Total tax: (not computed)
+  Refund or amount due: (not computed)
+
+NOTE: This is a partial draft. Several lines (total income, taxable income,
+total tax, and the final refund/amount-due) have not been filled in yet, and the
+dividend amount from the 1099-DIV is missing.

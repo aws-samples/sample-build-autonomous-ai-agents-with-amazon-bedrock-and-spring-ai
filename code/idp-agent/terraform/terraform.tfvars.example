@@ -1,0 +1,25 @@
+# Example variables for the primary AgentCore Runtime deployment.
+# Copy to terraform.tfvars and adjust, or use environments/<env>.tfvars with
+#   terraform apply -var-file="environments/dev.tfvars"
+
+# AWS region to deploy into.
+region = "us-east-1"
+
+# Deployment environment: dev | staging | prod.
+environment = "dev"
+
+# Base name for the ECR repository, IAM role, and AgentCore Runtime.
+app_name = "idp-agent"
+
+# Container image tag pushed to ECR (see scripts/build-and-push.sh).
+image_tag = "latest"
+
+# Optional AgentCore Memory id. Leave empty to run without session memory.
+# Create one with scripts/create-memory.sh and paste the id here.
+memory_id = ""
+
+# Extra tags merged onto all resources (in addition to provider default_tags).
+tags = {
+  CostCenter = "ml-platform"
+  Owner      = "idp-team"
+}

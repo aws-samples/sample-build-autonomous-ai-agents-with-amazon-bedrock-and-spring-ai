@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autonomous Travel Agent</title>
+  <style>
+    :root {
+      --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --text:#e2e8f0; --muted:#94a3b8;
+      --accent:#ff9900; --accent2:#4285f4; --user:#2563eb; --assistant:#334155; --danger:#d93025;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg); color:var(--text); }
+    .app { display:grid; grid-template-columns:300px 1fr; height:100vh; }
+    .info { background:var(--panel); border-right:1px solid #0b1220; padding:24px 20px; overflow-y:auto; }
+    .info h2 { margin:0 0 4px; font-size:18px; }
+    .info h3 { margin:22px 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+    .muted { color:var(--muted); font-size:14px; line-height:1.5; }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .chip { font-size:12px; padding:4px 10px; border-radius:999px; font-weight:600; }
+    .chip-cap { background:rgba(66,133,244,.18); color:#9bbcff; }
+    .chip-tool { background:rgba(255,153,0,.16); color:#ffc46b; }
+    .model { display:block; font-size:12px; color:var(--muted); word-break:break-all; background:var(--panel2); padding:8px 10px; border-radius:8px; }
+    .chat { display:flex; flex-direction:column; min-width:0; }
+    .head { display:flex; align-items:center; justify-content:space-between; padding:18px 28px; border-bottom:1px solid #0b1220; }
+    .head h1 { font-size:18px; margin:0; }
+    .ghost { background:transparent; color:var(--muted); border:1px solid var(--panel2); border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; }
+    .ghost:hover { color:var(--text); border-color:var(--accent); }
+    .messages { flex:1; overflow-y:auto; padding:24px 28px; display:flex; flex-direction:column; gap:18px; }
+    .empty { margin:auto; max-width:460px; text-align:center; color:var(--muted); }
+    .suggestions { margin-top:18px; display:flex; flex-direction:column; gap:10px; }
+    .suggestion { background:var(--panel); border:1px solid var(--panel2); color:var(--text); padding:10px 14px; border-radius:10px; cursor:pointer; font-size:14px; text-align:left; font:inherit; }
+    .suggestion:hover { border-color:var(--accent); }
+    .msg { display:flex; flex-direction:column; max-width:80%; }
+    .msg.user { align-self:flex-end; align-items:flex-end; }
+    .msg.assistant { align-self:flex-start; }
+    .role { font-size:11px; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.06em; }
+    .bubble { padding:12px 16px; border-radius:12px; white-space:pre-wrap; line-height:1.55; font-size:15px; }
+    .user .bubble { background:var(--user); color:#fff; border-bottom-right-radius:2px; }
+    .assistant .bubble { background:var(--assistant); border-bottom-left-radius:2px; }
+    .composer { display:flex; gap:12px; padding:18px 28px 24px; border-top:1px solid #0b1220; }
+    .composer textarea { flex:1; resize:none; background:var(--panel); color:var(--text); border:1px solid var(--panel2); border-radius:10px; padding:12px 14px; font:inherit; font-size:15px; }
+    .composer textarea:focus { outline:none; border-color:var(--accent2); }
+    .composer button { background:var(--accent); color:#1a1a1a; font-weight:700; border:none; border-radius:10px; padding:0 22px; cursor:pointer; font:inherit; }
+    .composer button:disabled { opacity:.5; cursor:not-allowed; }
+    .banner { margin:0 28px; padding:10px 14px; border-radius:8px; font-size:14px; background:rgba(217,48,37,.15); color:#ff9b91; border:1px solid rgba(217,48,37,.4); }
+    @media (max-width:760px){ .app{grid-template-columns:1fr;} .info{display:none;} }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="info">
+      <h2 id="agentName">Autonomous Travel Agent</h2>
+      <p class="muted" id="agentDesc">Connecting to agent…</p>
+      <h3>Capabilities</h3>
+      <div class="chips" id="caps"></div>
+      <h3>Tools</h3>
+      <div class="chips" id="tools"></div>
+      <h3>Model</h3>
+      <code class="model" id="model">—</code>
+    </aside>
+
+    <main class="chat">
+      <div class="head">
+        <h1>Autonomous Travel Agent</h1>
+        <div class="head-actions">
+          <a class="ghost" href="/" style="text-decoration:none">Return to home</a>
+          <button class="ghost" id="reset">New conversation</button>
+        </div>
+      </div>
+      <div class="messages" id="messages">
+        <div class="empty" id="empty">
+          <p>Ask the agent to plan a trip. It reasons over your request, calls tools, and remembers the conversation.</p>
+          <div class="suggestions" id="suggestions"></div>
+        </div>
+      </div>
+      <div id="errorBanner"></div>
+      <form class="composer" id="composer">
+        <textarea id="input" rows="2" placeholder="Ask the travel agent… (Enter to send, Shift+Enter for a new line)"></textarea>
+        <button type="submit" id="send">Send</button>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    const SUGGESTIONS = [
+      'Plan a 3-day trip to Tokyo and tell me the weather.',
+      'What time is it, and what should I pack for Seattle?',
+      'Estimate a round-trip flight from New York to London.'
+    ];
+    let sessionId = 'web-' + Math.random().toString(36).slice(2, 10);
+    let busy = false;
+
+    const $ = (id) => document.getElementById(id);
+    const messagesEl = $('messages'), emptyEl = $('empty');
+
+    function chip(text, cls) { const s = document.createElement('span'); s.className = 'chip ' + cls; s.textContent = text; return s; }
+
+    async function loadInfo() {
+      try {
+        const r = await fetch('/api/agent/info');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const info = await r.json();
+        $('agentName').textContent = info.name;
+        $('agentDesc').textContent = info.description;
+        $('model').textContent = info.model;
+        info.capabilities.forEach(c => $('caps').appendChild(chip(c, 'chip-cap')));
+        info.tools.forEach(t => $('tools').appendChild(chip(t, 'chip-tool')));
+      } catch (e) { $('agentDesc').textContent = 'Could not reach agent: ' + e; }
+    }
+
+    function addMessage(role, text) {
+      if (emptyEl) emptyEl.remove();
+      const wrap = document.createElement('div'); wrap.className = 'msg ' + role;
+      const r = document.createElement('div'); r.className = 'role'; r.textContent = role === 'user' ? 'You' : 'Agent';
+      const b = document.createElement('div'); b.className = 'bubble'; b.textContent = text;
+      wrap.appendChild(r); wrap.appendChild(b); messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return b;
+    }
+
+    async function send(prompt) {
+      const text = (prompt || '').trim();
+      if (!text || busy) return;
+      busy = true; $('send').disabled = true; $('errorBanner').innerHTML = '';
+      addMessage('user', text); $('input').value = '';
+      const bubble = addMessage('assistant', '');
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: text, sessionId })
+        });
+        if (!res.ok || !res.body) {
+          const t = await res.text().catch(() => '');
+          throw new Error('Chat failed (' + res.status + '). ' + t);
+        }
+        const reader = res.body.getReader(); const dec = new TextDecoder();
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          bubble.textContent += dec.decode(value, { stream: true });
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+      } catch (e) {
+        const banner = document.createElement('div'); banner.className = 'banner'; banner.textContent = String(e);
+        $('errorBanner').appendChild(banner);
+        if (!bubble.textContent) bubble.textContent = 'Something went wrong. Please try again.';
+      } finally { busy = false; $('send').disabled = false; }
+    }
+
+    SUGGESTIONS.forEach(s => {
+      const b = document.createElement('button'); b.className = 'suggestion'; b.textContent = s;
+      b.onclick = () => send(s); $('suggestions').appendChild(b);
+    });
+    $('composer').addEventListener('submit', (e) => { e.preventDefault(); send($('input').value); });
+    $('input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send($('input').value); }
+    });
+    $('reset').addEventListener('click', () => {
+      sessionId = 'web-' + Math.random().toString(36).slice(2, 10);
+      messagesEl.innerHTML = ''; $('errorBanner').innerHTML = '';
+    });
+
+    loadInfo();
+  </script>
+</body>
+</html>

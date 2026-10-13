@@ -1,0 +1,59 @@
+### Health check (AgentCore /ping contract)
+GET http://localhost:8080/ping
+
+### List available specialist agents
+GET http://localhost:8080/api/agents
+
+### Process an invoice (text, explicit agent) via the AgentCore contract endpoint
+POST http://localhost:8080/invocations
+Content-Type: application/json
+X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: batch-1
+
+{
+  "agentType": "INVOICE",
+  "question": "Is the math correct and who is the vendor?",
+  "content": "INVOICE\nInvoice Number: INV-2026-00841\nVendor: Globex\nSubtotal: 6500.00\nTax (8%): 520.00\nTotal: 7020.00\nDue Date: 2026-06-11"
+}
+
+### Process an UNSIGNED check — should trigger the 'check-missing-signature' ALERT
+POST http://localhost:8080/invocations
+Content-Type: application/json
+X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: batch-1
+
+{
+  "agentType": "BANK_CHECK",
+  "content": "FIRST NATIONAL BANK Check No. 1043\nDate: 2026-05-20\nPay to the order of: Acme Corp $1,250.00\nOne thousand two hundred fifty and 00/100 DOLLARS\nSignature: (left blank)"
+}
+
+### Auto-classify (no agentType) and answer a question
+POST http://localhost:8080/invocations
+Content-Type: application/json
+X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: batch-1
+
+{
+  "question": "What kind of document is this and what is the total?",
+  "content": "INVOICE\nInvoice Number: INV-2026-00841\nTotal: 7020.00 USD"
+}
+
+### Interactive file upload: choose agent + attach a file (multipart)
+# Most editors support file refs in .http files; otherwise use the curl form in the README.
+POST http://localhost:8080/api/documents
+Content-Type: multipart/form-data; boundary=----idp
+
+------idp
+Content-Disposition: form-data; name="agentType"
+
+BANK_CHECK
+------idp
+Content-Disposition: form-data; name="question"
+
+Is this check signed?
+------idp
+Content-Disposition: form-data; name="file"; filename="check-unsigned.txt"
+Content-Type: text/plain
+
+< ./samples/check-unsigned.txt
+------idp--
+
+### Prometheus metrics (idp.documents.processed, idp.extraction.confidence, idp.alerts.sent)
+GET http://localhost:8080/actuator/prometheus

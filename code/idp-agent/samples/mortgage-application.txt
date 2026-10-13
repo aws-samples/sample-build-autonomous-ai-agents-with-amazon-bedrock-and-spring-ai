@@ -1,0 +1,22 @@
+UNIFORM RESIDENTIAL LOAN APPLICATION (summary)
+
+Borrower: Jordan A. Rivera
+Property: 19 Birchwood Court, Madison, WI (single-family, primary residence)
+Purchase price: $420,000
+Requested loan amount: $378,000
+Loan type: 30-year fixed conventional
+Estimated interest rate: 6.75%
+Property (appraised) value: $415,000
+
+Borrower-stated monthly income: $7,800
+Monthly debt obligations:
+  - Auto loan: $480
+  - Student loans: $610
+  - Credit cards (minimums): $240
+  - Proposed mortgage (PITI): $2,950
+
+Credit score (stated): 712
+
+Documentation attached: Photo ID, purchase agreement.
+NOTE: No pay stubs, W-2s, tax returns, or bank statements are included with this packet.
+Income is borrower-stated only.

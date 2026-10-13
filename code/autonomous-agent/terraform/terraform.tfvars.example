@@ -1,0 +1,37 @@
+# Example variable values for the autonomous-agent root module.
+#
+# Copy this file to terraform.tfvars (or use one of the environments/*.tfvars
+# files) and adjust the values. Every variable below is optional and shown with
+# a sample value; uncomment and change what you need.
+
+# AWS region to deploy all resources into. Must be non-empty.
+# region = "us-east-1"
+
+# Deployment environment. Must be one of: dev, staging, prod.
+# Drives naming, tags, and the Spring profile (SPRING_PROFILES_ACTIVE).
+# environment = "dev"
+
+# Base name for the ECR repo, IAM role, and runtime.
+# Lowercase letters, numbers, and hyphens only.
+# app_name = "autonomous-agent"
+
+# Container image tag pushed to ECR and deployed to the runtime. Must be non-empty.
+# image_tag = "latest"
+
+# Optional AgentCore Memory id. Leave empty to run without session memory.
+# Create one with scripts/create-memory.sh, then set it here.
+# memory_id = ""
+
+# Bedrock model id (inference profile) the agent invokes. Must be non-empty.
+# bedrock_model = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+# Optional KMS key ARN for ECR encryption at rest. Leave empty for AWS-managed
+# AES256, or set a KMS key ARN to use customer-managed KMS encryption.
+# ecr_kms_key_arn = ""
+
+# Extra tags merged onto all resources in addition to the default tags
+# (Application, Environment, ManagedBy).
+# tags = {
+#   CostCenter = "ml-platform"
+#   Owner      = "agent-team"
+# }

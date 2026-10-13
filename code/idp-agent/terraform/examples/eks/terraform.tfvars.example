@@ -1,0 +1,43 @@
+# Example variables for the complete EKS deployment.
+# Copy to terraform.tfvars and adjust, or use environments/<env>.tfvars.
+
+region      = "us-east-1"
+environment = "dev"
+app_name    = "idp-agent"
+
+# EKS control plane version.
+kubernetes_version = "1.33"
+
+# Restrict public access to the EKS API server to your operator/CI egress
+# ranges. The default is an RFC 5737 placeholder that reaches nothing. Never
+# use 0.0.0.0/0.
+cluster_endpoint_public_access_cidrs = ["203.0.113.0/24"]
+
+# Keep the app Service on an internal (VPC-only) NLB. Set to false only after
+# fronting it with TLS (ALB Ingress + ACM certificate).
+load_balancer_internal = true
+
+# Graviton (arm64) node group sizing.
+node_instance_types = ["t4g.large"]
+node_desired_size   = 2
+node_min_size       = 2
+node_max_size       = 4
+
+# Existing ECR repository holding the arm64 image (scripts/build-and-push.sh
+# creates it and records the tag in image-version.txt).
+ecr_repository_name = "idp-agent"
+image_tag           = "latest"
+
+# Optional AgentCore Memory id.
+memory_id = ""
+
+# Application pods.
+replicas = 2
+
+# Lock this down to your UI origin(s) in production.
+cors_allowed_origins = "https://idp.example.com"
+
+tags = {
+  CostCenter = "ml-platform"
+  Owner      = "idp-team"
+}

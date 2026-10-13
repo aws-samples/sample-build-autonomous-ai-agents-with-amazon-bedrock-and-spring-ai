@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.amazonaws.samples</groupId>
+        <artifactId>spring-ai-agentcore-samples</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>autonomous-agent</artifactId>
+    <name>autonomous-agent</name>
+    <description>Autonomous AI agent on Amazon Bedrock + Spring AI + AgentCore</description>
+
+    <dependencies>
+        <!-- Spring MVC + SSE streaming endpoints -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!-- Actuator drives the smart /ping health check -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Bean Validation for request DTOs (@NotBlank, @Size) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- AspectJ weaver enables the Micrometer @Observed aspect.
+             Spring Boot 4.x dropped the dedicated spring-boot-starter-aop;
+             spring-aop arrives transitively via the web starter. -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
+        <!-- Amazon Bedrock chat model (Converse API) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-bedrock-converse</artifactId>
+        </dependency>
+
+        <!-- AgentCore Runtime contract: /invocations, /ping, SSE, rate limiting -->
+        <dependency>
+            <groupId>org.springaicommunity</groupId>
+            <artifactId>spring-ai-agentcore-runtime-starter</artifactId>
+        </dependency>
+
+        <!-- AgentCore Memory: short-term history + long-term strategies -->
+        <dependency>
+            <groupId>org.springaicommunity</groupId>
+            <artifactId>spring-ai-agentcore-memory</artifactId>
+        </dependency>
+
+        <!-- AgentCore Browser: managed headless browsing exposed as agent tools
+             (browseUrl, takeScreenshot, clickElement, fillForm, evaluateScript).
+             Runs against the AgentCore Browser service by default, or a local
+             Chromium via agentcore.browser.mode=local. -->
+        <dependency>
+            <groupId>org.springaicommunity</groupId>
+            <artifactId>spring-ai-agentcore-browser</artifactId>
+        </dependency>
+
+        <!-- AgentCore Code Interpreter: sandboxed Python/JavaScript/TypeScript
+             execution exposed as an executeCode tool, with automatic retrieval of
+             generated files (charts, CSVs). -->
+        <dependency>
+            <groupId>org.springaicommunity</groupId>
+            <artifactId>spring-ai-agentcore-code-interpreter</artifactId>
+        </dependency>
+
+        <!-- AgentCore Evaluations: online scoring of responses through the
+             Bedrock AgentCore Evaluate API. Opt-in via agentcore.evaluation.enabled. -->
+        <dependency>
+            <groupId>org.springaicommunity</groupId>
+            <artifactId>spring-ai-agentcore-evaluations</artifactId>
+        </dependency>
+
+        <!-- Resilience: circuit breaker + retry around the model call -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-retry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-reactor</artifactId>
+        </dependency>
+
+        <!-- Observability: Prometheus scrape endpoint via Micrometer -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- Distributed tracing: Micrometer -> OpenTelemetry -> OTLP.
+             Export to an OTel/ADOT collector (then AWS X-Ray) by setting
+             OTLP_TRACES_ENDPOINT and TRACING_SAMPLING. @Observed spans become real spans. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
+
+        <!--
+          Optional: connect to enterprise tools through AgentCore Gateway (MCP).
+          Uncomment to enable; configure spring.ai.mcp.client.* in application.properties.
+
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-client</artifactId>
+        </dependency>
+        -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>autonomous-agent</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

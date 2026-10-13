@@ -1,0 +1,31 @@
+target/
+*.class
+*.log
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars.local
+override.tf
+override.tf.json
+.terraform.lock.hcl
+image-version.txt
+
+# OS
+.DS_Store
+Thumbs.db

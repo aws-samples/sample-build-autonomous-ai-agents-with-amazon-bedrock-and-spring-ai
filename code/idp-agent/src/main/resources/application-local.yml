@@ -1,0 +1,21 @@
+# ---------------------------------------------------------------------------
+# Local development profile: run the IDP system WITHOUT an AgentCore Memory
+# resource.
+#
+#   mvn spring-boot:run -Dspring-boot.run.profiles=local
+#
+# This disables the AgentCore Memory auto-configuration so the app starts with no
+# AGENTCORE_MEMORY_ID. Agents run statelessly (no cross-document session memory).
+# You still need AWS credentials and Bedrock model access for the model calls.
+# ---------------------------------------------------------------------------
+spring:
+  autoconfigure:
+    exclude:
+      - org.springaicommunity.agentcore.memory.shortterm.AgentCoreShortTermMemoryRepositoryAutoConfiguration
+      - org.springaicommunity.agentcore.memory.longterm.AgentCoreLongTermMemoryAutoConfiguration
+
+# Allow both UI dev-server ports (Vite forwards the browser Origin through its proxy,
+# so the backend must accept the port the UI is served from).
+idp:
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:5174,http://localhost:4173
