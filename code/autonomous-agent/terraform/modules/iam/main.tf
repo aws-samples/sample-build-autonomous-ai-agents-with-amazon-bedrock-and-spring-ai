@@ -99,15 +99,53 @@ resource "aws_iam_role_policy" "this" {
         ]
       },
       {
+        # ListSessions backs user-level session lookups in the SDK memory module;
+        # GetMemory lets long-term auto-discovery read the memory's strategies.
         Sid    = "AgentCoreMemoryAccess"
         Effect = "Allow"
         Action = [
           "bedrock-agentcore:CreateEvent",
           "bedrock-agentcore:ListEvents",
           "bedrock-agentcore:DeleteEvent",
-          "bedrock-agentcore:RetrieveMemoryRecords"
+          "bedrock-agentcore:ListSessions",
+          "bedrock-agentcore:RetrieveMemoryRecords",
+          "bedrock-agentcore:GetMemory"
         ]
         Resource = [var.memory_resource_arn]
+      },
+      {
+        # Managed AgentCore Browser tool (agent.managed-tools-enabled defaults to
+        # true outside the local profile). Covers the AWS-managed aws.browser.v1
+        # and any custom browser in this account.
+        Sid    = "AgentCoreBrowser"
+        Effect = "Allow"
+        Action = [
+          "bedrock-agentcore:StartBrowserSession",
+          "bedrock-agentcore:GetBrowserSession",
+          "bedrock-agentcore:StopBrowserSession",
+          "bedrock-agentcore:UpdateBrowserStream",
+          "bedrock-agentcore:ConnectBrowserAutomationStream"
+        ]
+        Resource = [
+          "arn:aws:bedrock-agentcore:${var.region}:aws:browser/*",
+          "arn:aws:bedrock-agentcore:${var.region}:${var.account_id}:browser/*"
+        ]
+      },
+      {
+        # Managed AgentCore Code Interpreter tool (aws.codeinterpreter.v1 or a
+        # custom code interpreter in this account).
+        Sid    = "AgentCoreCodeInterpreter"
+        Effect = "Allow"
+        Action = [
+          "bedrock-agentcore:StartCodeInterpreterSession",
+          "bedrock-agentcore:InvokeCodeInterpreter",
+          "bedrock-agentcore:GetCodeInterpreterSession",
+          "bedrock-agentcore:StopCodeInterpreterSession"
+        ]
+        Resource = [
+          "arn:aws:bedrock-agentcore:${var.region}:aws:code-interpreter/*",
+          "arn:aws:bedrock-agentcore:${var.region}:${var.account_id}:code-interpreter/*"
+        ]
       }
     ]
   })

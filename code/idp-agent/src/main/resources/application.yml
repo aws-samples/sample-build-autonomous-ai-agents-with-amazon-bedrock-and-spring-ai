@@ -26,8 +26,9 @@ server:
   shutdown: graceful
 
 # ---------------------------------------------------------------------------
-# AgentCore Memory (optional). When AGENTCORE_MEMORY_ID is unset the app still
-# starts; agents simply run without cross-document session memory.
+# AgentCore Memory (optional). The memory starters require a memory id, so when
+# AGENTCORE_MEMORY_ID is unset run with the "stateless" (or "local") profile;
+# Terraform adds "stateless" automatically when memory_id is empty.
 # ---------------------------------------------------------------------------
 agentcore:
   memory:

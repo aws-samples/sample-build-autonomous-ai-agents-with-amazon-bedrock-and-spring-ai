@@ -75,3 +75,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "verify_image" {
+  description = "Check at plan time that image_tag exists in ECR before creating or updating the runtime. scripts/cleanup.sh sets this to false so destroy never depends on an image."
+  type        = bool
+  default     = true
+}

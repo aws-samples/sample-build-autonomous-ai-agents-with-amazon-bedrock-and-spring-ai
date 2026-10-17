@@ -19,6 +19,9 @@ if [ ! -f "$VARFILE" ]; then
 fi
 
 MEMORY_ID="${AGENTCORE_MEMORY_ID:-}"
+# Push the image to the same Region Terraform deploys to.
+REGION="$(sed -n 's/^[[:space:]]*region[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' "$VARFILE" | head -n1)"
+REGION="${REGION:-${AWS_REGION:-us-east-1}}"
 
 terraform init -input=false
 terraform workspace select "$ENVIRONMENT" 2>/dev/null || terraform workspace new "$ENVIRONMENT"
@@ -30,12 +33,9 @@ terraform apply -input=false -auto-approve \
   -target=module.ecr
 
 echo "==> Phase 2/3: build and push image"
-"$ROOT/scripts/build-and-push.sh" "$ENVIRONMENT"
+"$ROOT/scripts/build-and-push.sh" "$ENVIRONMENT" "$REGION"
 
-IMAGE_TAG="latest"
-if [ -f image-version.txt ]; then
-  IMAGE_TAG="$(cat image-version.txt)"
-fi
+IMAGE_TAG="$(cat image-version.txt)"
 
 echo "==> Phase 3/3: provision IAM role + AgentCore Runtime"
 terraform apply -input=false -auto-approve \

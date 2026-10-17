@@ -26,9 +26,10 @@ aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
 
 echo "==> Building and pushing linux/arm64 image ${ECR_URI}:${IMAGE_TAG}"
+# Only the timestamped tag is pushed, so this also works against an IMMUTABLE
+# repository (such as the one the AgentCore Terraform path creates).
 docker buildx build --platform linux/arm64 \
   -t "${ECR_URI}:${IMAGE_TAG}" \
-  -t "${ECR_URI}:latest" \
   --push "$APP_DIR"
 
 echo "$IMAGE_TAG" > "$(dirname "$0")/../image-version.txt"
