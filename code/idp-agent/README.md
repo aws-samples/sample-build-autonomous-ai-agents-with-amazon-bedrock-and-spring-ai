@@ -118,9 +118,12 @@ idp-agent/
 │   └── examples/
 │       ├── complete/               # runnable AgentCore Runtime deployment (primary path)
 │       └── eks/                    # runnable Kubernetes deployment (VPC + EKS + IRSA + workload)
-├── scripts/                        # create-memory, build-and-push(-eks), deploy(-eks), cleanup(-eks)
-└── ui/                             # React + TypeScript front end (Vite)
+└── scripts/                        # create-memory, build-and-push(-eks), deploy(-eks), cleanup(-eks)
 ```
+
+The React front end lives next to this module in
+[`../idp-agent-ui/`](../idp-agent-ui/README.md) and ships as its own nginx image. To run
+everything (both agents, both UIs, and the landing page), see [`../README.md`](../README.md).
 
 ## Prerequisites
 
@@ -136,8 +139,9 @@ You need **JDK 21** (required by AgentCore 2.0 / Spring Boot 4.1), Maven 3.9+, N
 AWS credentials with Bedrock model access. The `local` profile runs statelessly (no AgentCore
 Memory resource) and pre-allows the UI dev-server origins for CORS.
 
-By default this app also listens on 8080. To run it alongside the autonomous-agent (which
-uses 8080 / 5173), start the IDP backend on **8081** and its UI on **5174** as shown below.
+The container listens on 8080 (the AgentCore Runtime contract port). Locally, run the IDP
+backend on **8081** and its UI on **5174** so it sits alongside the autonomous-agent
+(8080 / 5173); the UI dev server proxies to 8081 by default.
 
 **Backend (port 8081)**
 
@@ -158,17 +162,12 @@ mvn spring-boot:run "-Dspring-boot.run.profiles=local" "-Dspring-boot.run.argume
 **UI (port 5174, proxies /api to the backend on 8081)**
 
 ```bash
-cd ui
-npm install
-# point the dev-server proxy at the backend port, then run on 5174
-BACKEND_URL=http://localhost:8081 npm run dev -- --port 5174     # http://localhost:5174
+cd ../idp-agent-ui
+npm ci
+npm run dev            # http://localhost:5174 (proxies /api to http://localhost:8081)
 ```
 
-Windows PowerShell:
-
-```powershell
-$env:BACKEND_URL="http://localhost:8081"; npm run dev -- --port 5174
-```
+Set `BACKEND_URL` to point the dev-server proxy somewhere else.
 
 Open http://localhost:5174, sign in, choose the **Lawyer** persona, upload
 `samples/lease-agreement.pdf`, and ask "Is this lease tenant-friendly, and is it signed?".
@@ -176,9 +175,8 @@ You should see a structured extraction, an unsigned-document **ALERT**, and the 
 routed to the **Review queue** tab. See `samples/README.md` for one ready-to-use PDF per
 persona and the question to ask.
 
-> If you run the backend on the default 8080 and the UI on the default 5173, no port
-> overrides are needed. The `local` profile already allows the 5173, 5174, and 4173 origins
-> for CORS. If you serve the UI from a different origin, add it to `idp.cors.allowed-origins`.
+> The UI calls the backend through a same-origin proxy, so CORS is not involved. If you
+> call the backend directly from another origin, add it to `idp.cors.allowed-origins`.
 
 ### Without the UI (curl)
 
@@ -197,11 +195,11 @@ JSON and multipart examples.
 
 **1. Sign in** (demo auth, stored in the browser; replace with Amazon Cognito for production):
 
-![IDP login](ui/docs/screenshots/idp-login.png)
+![IDP login](../idp-agent-ui/docs/screenshots/idp-login.png)
 
 **2. Dashboard.** After signing in you land on the console:
 
-![IDP dashboard](ui/docs/screenshots/idp-dashboard.png)
+![IDP dashboard](../idp-agent-ui/docs/screenshots/idp-dashboard.png)
 
 - **Process / Review queue tabs** in the top bar. The Review queue tab shows a live badge with
   the number of documents awaiting a human decision.
@@ -262,15 +260,18 @@ state (S3 + DynamoDB) setup, `terraform.tfvars.example`, the runnable
 (Kubernetes) examples, and the tflint/checkov/pre-commit workflow. Every module carries its
 own README with validated inputs and outputs.
 
-Invoke the deployed runtime:
+Invoke the deployed runtime. The runtime uses IAM (SigV4) authentication, so call it through
+the AWS CLI or an AWS SDK; the session id must be at least 33 characters:
 
 ```bash
-RUNTIME_NAME=$(terraform -chdir=terraform output -raw runtime_name)
-curl -X POST \
-  "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/${RUNTIME_NAME}/invocations?qualifier=DEFAULT" \
-  -H "Content-Type: application/json" \
-  -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: s-1" \
-  -d '{"agentType":"INVOICE","content":"INVOICE ... Total: 7020.00"}'
+RUNTIME_ARN=$(terraform -chdir=terraform output -raw runtime_arn)
+aws bedrock-agentcore invoke-agent-runtime \
+  --agent-runtime-arn "$RUNTIME_ARN" \
+  --runtime-session-id "$(uuidgen)" \
+  --content-type application/json \
+  --cli-binary-format raw-in-base64-out \
+  --payload '{"agentType":"LAWYER","mimeType":"text/plain","content":"LEASE AGREEMENT between Landlord and Tenant ... (no signatures)","question":"Is this lease signed?"}' \
+  response.json && cat response.json
 ```
 
 ## Deploy on Amazon EKS (alternative)
@@ -284,7 +285,8 @@ and a Deployment, Service, HPA, and namespace. No node-wide credentials. See
 cluster.
 
 ```bash
-# 1. Build + push the arm64 image (creates the ECR repo if needed)
+# 1. Build + push the arm64 image (creates the ECR repo if needed and records the
+#    tag in terraform/examples/eks/image-version.txt for the deploy step)
 TARGET_ARCH=arm64 ./scripts/build-and-push-eks.sh
 
 # 2. Deploy (terraform init + apply) for an environment (dev | prod)
@@ -320,14 +322,14 @@ aws bedrock-agentcore-control delete-memory --memory-id <id> --region <region>
 aws ecr delete-repository --repository-name <repo> --force --region <region>
 ```
 
-AgentCore Runtime scales to zero, so an idle agent costs almost nothing; your main variable
-cost is Bedrock token usage.
+AgentCore Runtime is consumption-priced (per-second CPU and memory actually used), so an idle
+agent costs very little; your main variable cost is Bedrock token usage.
 
 ## Build and test
 
 ```bash
-mvn clean verify          # backend (offline rules + agent-type tests included)
-cd ui && npm run build    # UI type-check + bundle
+mvn clean verify                                  # backend (offline rules + agent-type tests included)
+cd ../idp-agent-ui && npm ci && npm run build     # UI type-check + bundle
 ```
 
 ## Security notes

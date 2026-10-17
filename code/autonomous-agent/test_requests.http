@@ -1,10 +1,13 @@
+### AgentCore Runtime requires session ids of at least 33 characters, so the
+### examples use ids of that length even locally.
+
 ### Health check (AgentCore /ping contract)
 GET http://localhost:8080/ping
 
 ### First turn — introduce yourself (memory will store this)
 POST http://localhost:8080/invocations
 Content-Type: application/json
-X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-1
+X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-0000000000000000000001
 
 {
   "prompt": "Hi, I'm Maya. I'm planning a trip from Seattle to Tokyo next month and I prefer window seats."
@@ -13,7 +16,7 @@ X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-1
 ### Second turn — the agent should remember Maya, plan, and call tools
 POST http://localhost:8080/invocations
 Content-Type: application/json
-X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-1
+X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-0000000000000000000001
 
 {
   "prompt": "What's the weather like at my destination, and roughly what will the flight cost?"
@@ -22,7 +25,7 @@ X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-1
 ### Third turn — verify recall of the earlier preference
 POST http://localhost:8080/invocations
 Content-Type: application/json
-X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-1
+X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-0000000000000000000001
 
 {
   "prompt": "Remind me what seating preference I mentioned earlier."

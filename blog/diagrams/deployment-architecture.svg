@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 860" width="1400" height="860" font-family="Amazon Ember, Helvetica Neue, Arial, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Deployment architecture: Spring AI agents on Amazon Bedrock AgentCore Runtime and Amazon ECS</title>
+  <desc id="d">Browser users reach a load balancer and ECS Fargate services (landing page, two UIs, two backends). API clients call AgentCore Runtime with InvokeAgentRuntime. Both paths run the same Spring Boot agent image and call Amazon Bedrock and AgentCore Browser and Code Interpreter with IAM roles. Images come from Amazon ECR; logs go to CloudWatch.</desc>
+  <defs>
+    <marker id="aPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8C4FFF"/></marker>
+    <marker id="aTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#01A88D"/></marker>
+    <marker id="aGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#545B64"/></marker>
+    <marker id="aOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ED7100"/></marker>
+    <style>
+      .h { font-size: 13px; font-weight: 700; fill: #232F3E; }
+      .t { font-size: 12px; fill: #232F3E; }
+      .s { font-size: 11px; fill: #545B64; }
+      .w { font-size: 12px; font-weight: 700; fill: #ffffff; }
+      .lbl { font-size: 11px; fill: #545B64; font-style: italic; }
+      .box { fill: #ffffff; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="860" fill="#F7F9FB"/>
+
+  <!-- Actors -->
+  <g>
+    <rect x="20" y="160" width="185" height="82" rx="10" class="box" stroke="#232F3E"/>
+    <text x="112" y="190" text-anchor="middle" class="h">End user (browser)</text>
+    <text x="112" y="208" text-anchor="middle" class="s">allowed IP only</text>
+    <text x="112" y="224" text-anchor="middle" class="s">HTTP</text>
+
+    <rect x="20" y="500" width="185" height="82" rx="10" class="box" stroke="#232F3E"/>
+    <text x="112" y="530" text-anchor="middle" class="h">API client</text>
+    <text x="112" y="548" text-anchor="middle" class="s">AWS CLI / SDK / backend</text>
+    <text x="112" y="564" text-anchor="middle" class="s">signed with SigV4</text>
+
+    <rect x="20" y="725" width="185" height="82" rx="10" class="box" stroke="#232F3E"/>
+    <text x="112" y="755" text-anchor="middle" class="h">Developer / CI</text>
+    <text x="112" y="773" text-anchor="middle" class="s">terraform apply</text>
+    <text x="112" y="789" text-anchor="middle" class="s">Jib or Docker push</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(20,612)">
+    <text x="0" y="0" class="h">Legend</text>
+    <line x1="0" y1="18" x2="34" y2="18" stroke="#8C4FFF" stroke-width="2.5" marker-end="url(#aPurple)"/>
+    <text x="42" y="22" class="s">Web path (browser)</text>
+    <line x1="0" y1="38" x2="34" y2="38" stroke="#01A88D" stroke-width="2.5" marker-end="url(#aTeal)"/>
+    <text x="42" y="42" class="s">AgentCore path (API)</text>
+    <line x1="0" y1="58" x2="34" y2="58" stroke="#545B64" stroke-width="2" marker-end="url(#aGray)"/>
+    <text x="42" y="62" class="s">AWS API calls (IAM)</text>
+    <line x1="0" y1="78" x2="34" y2="78" stroke="#ED7100" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#aOrange)"/>
+    <text x="42" y="82" class="s">Container images</text>
+  </g>
+
+  <!-- AWS Cloud + Region -->
+  <rect x="230" y="20" width="1150" height="822" rx="6" fill="none" stroke="#232F3E" stroke-width="2"/>
+  <rect x="230" y="20" width="250" height="26" fill="#232F3E"/>
+  <text x="242" y="38" class="w">AWS Cloud</text>
+  <rect x="250" y="58" width="1110" height="768" rx="6" fill="none" stroke="#147EBA" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="264" y="78" font-size="12" font-weight="700" fill="#147EBA">Region us-east-1</text>
+
+  <!-- ===== Web path: VPC + ECS ===== -->
+  <rect x="272" y="92" width="568" height="300" rx="6" fill="#ffffff" stroke="#8C4FFF" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="286" y="112" font-size="12" font-weight="700" fill="#8C4FFF">VPC · web path · code/ecs-stack</text>
+
+  <!-- ALB -->
+  <rect x="290" y="165" width="128" height="140" rx="8" class="box" stroke="#8C4FFF"/>
+  <rect x="290" y="165" width="128" height="26" rx="8" fill="#8C4FFF"/>
+  <rect x="290" y="180" width="128" height="11" fill="#8C4FFF"/>
+  <text x="354" y="183" text-anchor="middle" class="w">Load balancer</text>
+  <text x="304" y="214" class="t">:80   landing</text>
+  <text x="304" y="234" class="t">:8081 travel UI</text>
+  <text x="304" y="254" class="t">:8082 IDP UI</text>
+  <text x="304" y="282" class="s">IP allowlist</text>
+  <text x="304" y="296" class="s">no auth (demo)</text>
+
+  <!-- ECS cluster -->
+  <rect x="440" y="122" width="385" height="258" rx="8" fill="#FFF8F1" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="454" y="141" font-size="12" font-weight="700" fill="#ED7100">ECS cluster · Fargate ARM64</text>
+
+  <rect x="455" y="152" width="138" height="52" rx="6" class="box" stroke="#ED7100"/>
+  <text x="524" y="174" text-anchor="middle" class="h">Landing page</text>
+  <text x="524" y="191" text-anchor="middle" class="s">nginx · static</text>
+
+  <rect x="455" y="218" width="138" height="52" rx="6" class="box" stroke="#ED7100"/>
+  <text x="524" y="240" text-anchor="middle" class="h">Travel UI</text>
+  <text x="524" y="257" text-anchor="middle" class="s">nginx · React</text>
+
+  <rect x="455" y="284" width="138" height="52" rx="6" class="box" stroke="#ED7100"/>
+  <text x="524" y="306" text-anchor="middle" class="h">IDP console</text>
+  <text x="524" y="323" text-anchor="middle" class="s">nginx · React</text>
+
+  <rect x="650" y="205" width="160" height="78" rx="6" class="box" stroke="#ED7100"/>
+  <text x="730" y="226" text-anchor="middle" class="h">autonomous-agent</text>
+  <text x="730" y="243" text-anchor="middle" class="s">Spring Boot + Spring AI</text>
+  <text x="730" y="258" text-anchor="middle" class="s">+ AgentCore SDK</text>
+  <text x="730" y="273" text-anchor="middle" class="s">/api/*</text>
+
+  <rect x="650" y="292" width="160" height="78" rx="6" class="box" stroke="#ED7100"/>
+  <text x="730" y="313" text-anchor="middle" class="h">idp-agent</text>
+  <text x="730" y="330" text-anchor="middle" class="s">Spring Boot + Spring AI</text>
+  <text x="730" y="345" text-anchor="middle" class="s">+ AgentCore SDK</text>
+  <text x="730" y="360" text-anchor="middle" class="s">/api/*</text>
+
+  <text x="621" y="198" text-anchor="middle" class="lbl">Service</text>
+  <text x="621" y="210" text-anchor="middle" class="lbl">Connect</text>
+
+  <!-- Web path arrows -->
+  <line x1="205" y1="201" x2="288" y2="214" stroke="#8C4FFF" stroke-width="2.5" marker-end="url(#aPurple)"/>
+  <line x1="418" y1="190" x2="453" y2="178" stroke="#8C4FFF" stroke-width="2.5" marker-end="url(#aPurple)"/>
+  <line x1="418" y1="235" x2="453" y2="244" stroke="#8C4FFF" stroke-width="2.5" marker-end="url(#aPurple)"/>
+  <line x1="418" y1="280" x2="453" y2="310" stroke="#8C4FFF" stroke-width="2.5" marker-end="url(#aPurple)"/>
+  <line x1="593" y1="244" x2="648" y2="244" stroke="#8C4FFF" stroke-width="2.5" marker-end="url(#aPurple)"/>
+  <line x1="593" y1="310" x2="648" y2="330" stroke="#8C4FFF" stroke-width="2.5" marker-end="url(#aPurple)"/>
+
+  <!-- ===== AgentCore path ===== -->
+  <rect x="272" y="418" width="568" height="240" rx="6" fill="#EFFAF7" stroke="#01A88D" stroke-width="2"/>
+  <text x="286" y="440" font-size="13" font-weight="700" fill="#017A66">Amazon Bedrock AgentCore Runtime</text>
+  <text x="286" y="457" class="s">serverless · one isolated microVM per session · code/&lt;agent&gt;/terraform</text>
+
+  <rect x="290" y="478" width="150" height="160" rx="8" class="box" stroke="#01A88D"/>
+  <text x="365" y="502" text-anchor="middle" class="h">Runtime endpoint</text>
+  <text x="365" y="522" text-anchor="middle" class="t">InvokeAgentRuntime</text>
+  <text x="365" y="545" text-anchor="middle" class="s">checks IAM (SigV4)</text>
+  <text x="365" y="561" text-anchor="middle" class="s">routes by session id</text>
+  <text x="365" y="577" text-anchor="middle" class="s">starts / reuses microVM</text>
+  <text x="365" y="593" text-anchor="middle" class="s">polls GET /ping</text>
+  <text x="365" y="609" text-anchor="middle" class="s">DEFAULT endpoint</text>
+
+  <rect x="485" y="476" width="330" height="76" rx="6" class="box" stroke="#01A88D"/>
+  <text x="500" y="497" class="h">autonomousagentDev</text>
+  <text x="500" y="515" class="s">same image as ECS backend · ARM64 · port 8080</text>
+  <text x="500" y="531" class="s">POST /invocations (SSE stream) · GET /ping</text>
+  <text x="500" y="545" class="s">profile dev,stateless</text>
+
+  <rect x="485" y="564" width="330" height="76" rx="6" class="box" stroke="#01A88D"/>
+  <text x="500" y="585" class="h">idpagentDev</text>
+  <text x="500" y="603" class="s">same image as ECS backend · ARM64 · port 8080</text>
+  <text x="500" y="619" class="s">POST /invocations (JSON) · GET /ping</text>
+  <text x="500" y="633" class="s">profile dev,stateless</text>
+
+  <line x1="205" y1="541" x2="288" y2="555" stroke="#01A88D" stroke-width="2.5" marker-end="url(#aTeal)"/>
+  <line x1="440" y1="515" x2="483" y2="515" stroke="#01A88D" stroke-width="2.5" marker-end="url(#aTeal)"/>
+  <line x1="440" y1="600" x2="483" y2="600" stroke="#01A88D" stroke-width="2.5" marker-end="url(#aTeal)"/>
+
+  <!-- ===== Managed AI services ===== -->
+  <rect x="890" y="92" width="452" height="566" rx="6" fill="#ffffff" stroke="#01A88D" stroke-width="1.5"/>
+  <text x="906" y="114" font-size="12" font-weight="700" fill="#017A66">Managed AI services the agents call</text>
+
+  <rect x="910" y="130" width="412" height="92" rx="8" class="box" stroke="#01A88D"/>
+  <rect x="910" y="130" width="8" height="92" fill="#01A88D"/>
+  <text x="932" y="156" class="h">Amazon Bedrock · Converse API</text>
+  <text x="932" y="176" class="t">Claude Sonnet 4.5 (global inference profile)</text>
+  <text x="932" y="196" class="s">reasoning, tool selection, structured output,</text>
+  <text x="932" y="211" class="s">reading PDFs and images (IDP)</text>
+
+  <rect x="910" y="238" width="412" height="80" rx="8" class="box" stroke="#01A88D"/>
+  <rect x="910" y="238" width="8" height="80" fill="#01A88D"/>
+  <text x="932" y="264" class="h">AgentCore Browser</text>
+  <text x="932" y="284" class="t">managed headless Chrome, driven over CDP</text>
+  <text x="932" y="302" class="s">travel agent: read web pages, screenshots</text>
+
+  <rect x="910" y="334" width="412" height="80" rx="8" class="box" stroke="#01A88D"/>
+  <rect x="910" y="334" width="8" height="80" fill="#01A88D"/>
+  <text x="932" y="360" class="h">AgentCore Code Interpreter</text>
+  <text x="932" y="380" class="t">sandboxed Python (pandas, matplotlib)</text>
+  <text x="932" y="398" class="s">travel agent: calculations and charts</text>
+
+  <rect x="910" y="430" width="412" height="80" rx="8" fill="#ffffff" stroke="#01A88D" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="932" y="456" class="h">AgentCore Memory (optional)</text>
+  <text x="932" y="476" class="t">short-term history + long-term facts</text>
+  <text x="932" y="494" class="s">not configured: agents run "stateless"</text>
+
+  <text x="932" y="540" class="s">Every call is signed with the caller's IAM role:</text>
+  <text x="932" y="558" class="s">· AgentCore Runtime execution role (per agent)</text>
+  <text x="932" y="576" class="s">· ECS backend task role (web path)</text>
+  <text x="932" y="602" class="s">Least privilege: model invoke, Browser and</text>
+  <text x="932" y="620" class="s">Code Interpreter sessions, one memory ARN.</text>
+
+  <!-- Bus from both backends to services -->
+  <line x1="862" y1="160" x2="862" y2="612" stroke="#545B64" stroke-width="2"/>
+  <line x1="810" y1="244" x2="862" y2="244" stroke="#545B64" stroke-width="2"/>
+  <line x1="810" y1="331" x2="862" y2="331" stroke="#545B64" stroke-width="2"/>
+  <line x1="815" y1="514" x2="862" y2="514" stroke="#545B64" stroke-width="2"/>
+  <line x1="815" y1="602" x2="862" y2="602" stroke="#545B64" stroke-width="2"/>
+  <line x1="862" y1="176" x2="908" y2="176" stroke="#545B64" stroke-width="2" marker-end="url(#aGray)"/>
+  <line x1="862" y1="278" x2="908" y2="278" stroke="#545B64" stroke-width="2" marker-end="url(#aGray)"/>
+  <line x1="862" y1="374" x2="908" y2="374" stroke="#545B64" stroke-width="2" marker-end="url(#aGray)"/>
+  <line x1="862" y1="470" x2="908" y2="470" stroke="#545B64" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#aGray)"/>
+
+  <!-- ===== Bottom row: ECR, IAM, CloudWatch ===== -->
+  <rect x="272" y="690" width="262" height="112" rx="8" class="box" stroke="#ED7100"/>
+  <rect x="272" y="690" width="8" height="112" fill="#ED7100"/>
+  <text x="294" y="714" class="h">Amazon ECR</text>
+  <text x="294" y="734" class="t">2 agent + 3 web repositories</text>
+  <text x="294" y="752" class="s">IMMUTABLE timestamped tags</text>
+  <text x="294" y="768" class="s">scan on push · ARM64 images</text>
+  <text x="294" y="784" class="s">pulled by AgentCore Runtime and ECS</text>
+
+  <rect x="552" y="690" width="288" height="112" rx="8" class="box" stroke="#DD344C"/>
+  <rect x="552" y="690" width="8" height="112" fill="#DD344C"/>
+  <text x="574" y="714" class="h">AWS IAM</text>
+  <text x="574" y="734" class="t">runtime execution roles</text>
+  <text x="574" y="752" class="s">trusted by bedrock-agentcore.amazonaws.com</text>
+  <text x="574" y="768" class="s">with SourceAccount / SourceArn guards</text>
+  <text x="574" y="784" class="s">ECS execution + backend task roles</text>
+
+  <rect x="890" y="690" width="452" height="112" rx="8" class="box" stroke="#E7157B"/>
+  <rect x="890" y="690" width="8" height="112" fill="#E7157B"/>
+  <text x="912" y="714" class="h">Amazon CloudWatch</text>
+  <text x="912" y="734" class="t">logs: /aws/bedrock-agentcore/runtimes/&lt;id&gt;-DEFAULT</text>
+  <text x="912" y="752" class="t">logs: /ecs/agentcore-web-dev/&lt;service&gt;</text>
+  <text x="912" y="770" class="s">runtime metrics in the GenAI observability dashboard</text>
+  <text x="912" y="786" class="s">app metrics on /actuator/prometheus (Micrometer)</text>
+
+  <line x1="205" y1="760" x2="270" y2="752" stroke="#ED7100" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#aOrange)"/>
+  <text x="212" y="740" class="lbl">push</text>
+  <line x1="403" y1="690" x2="403" y2="642" stroke="#ED7100" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#aOrange)"/>
+  <text x="410" y="676" class="lbl">pull image</text>
+</svg>

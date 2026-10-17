@@ -11,9 +11,18 @@ the open-source [**Spring AI AgentCore**](https://github.com/spring-ai-community
 ├── blog/
 │   └── build-autonomous-ai-agents-with-amazon-bedrock-and-spring-ai.md
 └── code/
-    ├── autonomous-agent/    # Production-grade single agent: tools + memory + resilience + React UI
-    └── idp-agent/           # Production-grade multi-agent IDP system + React UI
+    ├── README.md              # Run everything locally (with or without Docker)
+    ├── docker-compose.yml     # Full local stack: 2 backends + 2 UIs + landing page
+    ├── ecs-stack/             # Terraform: browser URLs on AWS (ECS Fargate + load balancer)
+    ├── landing-page/          # Static page linking both agents (nginx image)
+    ├── autonomous-agent/      # Spring Boot backend: tools + memory + resilience (AgentCore Runtime)
+    ├── autonomous-agent-ui/   # React UI for the travel agent (nginx image)
+    ├── idp-agent/             # Spring Boot backend: multi-agent IDP system (AgentCore Runtime or EKS)
+    └── idp-agent-ui/          # React UI for the IDP console (nginx image)
 ```
+
+Each folder is one deployable: the backends are Maven modules packaged as ARM64 images for
+AgentCore Runtime, and the UIs and landing page are separate Node builds served by nginx.
 
 ## Examples
 
@@ -27,19 +36,19 @@ streaming chat UI. A good first read. See
 ### 2. `idp-agent`, production-grade Intelligent Document Processing
 A multi-agent IDP system with a React UI:
 
-- **Multi-agent**: classifier routes to specialist agents (invoice, bank check, contract,
-  ID, generic), each with its own prompt and tools.
+- **Multi-agent**: a classifier routes to specialist agents (Lawyer, Mortgage, Insurance,
+  Tax, General), each with its own prompt and tools.
 - **File upload + agent selection** in the UI; the agent reads images/PDFs/text and can
   answer a question about the document.
 - **Intelligent rules/workflow engine** (SpEL in `application.yml`) with **alerting**
-  (e.g. "Check has no signature").
+  (e.g. "Document appears unsigned").
 - **Observability** (Micrometer `@Observed`, domain metrics, Prometheus, structured logs),
   **resilience**, **12-factor config**, **graceful shutdown**.
 - **Modular Terraform** (ecr / iam / agentcore-runtime / eks-app) with per-environment
   tfvars, deploy on **AgentCore Runtime** or an existing **Amazon EKS** cluster (IRSA).
 
 See [code/idp-agent/README.md](code/idp-agent/README.md) and
-[code/idp-agent/ui/README.md](code/idp-agent/ui/README.md).
+[code/idp-agent-ui/README.md](code/idp-agent-ui/README.md).
 
 ## Architecture
 
@@ -54,28 +63,44 @@ Both examples build one ARM64 image, push it to Amazon ECR, and run it on a serv
 More diagrams, including per-app architecture and the multi-agent flow, are in
 [blog/diagrams/](blog/diagrams/README.md).
 
-## Quick start (IDP)
+## Quick start (local)
+
+Run both agents, both UIs, and the landing page on your machine. You need AWS credentials
+with Amazon Bedrock access; AgentCore Memory, Browser, and Code Interpreter are off locally.
 
 ```bash
-cd code/idp-agent
-export AWS_REGION=us-east-1
-mvn spring-boot:run                 # backend on :8080
-# in another terminal
-cd ui && npm install && npm run dev # UI on :5173
+mvn -q clean package -DskipTests   # build both backend jars
+cd code
+docker compose up --build          # http://localhost:3000
 ```
 
-Upload `code/idp-agent/samples/check-unsigned.txt` as a BANK_CHECK and watch the
-missing-signature alert fire.
+| URL | What |
+|---|---|
+| http://localhost:3000 | Landing page with both agents |
+| http://localhost:5173 | Travel agent UI |
+| http://localhost:5174 | IDP console |
+| http://localhost:8080 | Travel agent backend (`/invocations`, `/ping`, `/api/*`) |
+| http://localhost:8081 | IDP backend (`/invocations`, `/ping`, `/api/*`) |
+
+No Docker? See [code/README.md](code/README.md) for the same stack with Maven and npm.
 
 ## Requirements
 
 - Java 21+, Maven 3.9+, Node.js 20+
 - AWS account with Amazon Bedrock model access enabled (Anthropic Claude models in your Region)
-- For deployment: AWS CLI v2, Terraform >= 1.5, and a container engine that can build `linux/arm64` images (Docker with buildx, or an equivalent such as finch or podman)
+- For deployment: AWS CLI v2, Terraform >= 1.6, and a container engine that can build `linux/arm64` images (Docker with buildx, or an equivalent such as finch or podman)
 
 ## Deploy to AWS with Terraform
 
-Both examples deploy the same way: they build an ARM64 container image, push it to Amazon ECR, and create an **Amazon Bedrock AgentCore Runtime** that runs that image. Terraform manages the ECR repository, the IAM execution role and policy, and the runtime itself. AgentCore Runtime is serverless, so there is nothing to keep warm and you are billed per use.
+Both examples deploy the same way: they build an ARM64 container image, push it to Amazon ECR, and create an **Amazon Bedrock AgentCore Runtime** that runs that image. Terraform manages the ECR repository, the IAM execution role and policy, and the runtime itself. AgentCore Runtime is serverless and consumption-priced: you pay per second for the CPU and memory the agent actually uses.
+
+> **What runs where.** AgentCore Runtime forwards only `/invocations` and `/ping` to the
+> container, so the deployed agents are reached through the AgentCore API (see
+> [Validate the deployment](#validate-the-deployment-on-aws)). The React UIs and the
+> landing page call the backends' `/api/*` endpoints. To get browser URLs on AWS, deploy
+> [`code/ecs-stack`](code/ecs-stack/README.md) after the two AgentCore stacks: it runs the
+> landing page, both UIs, and the same backend images on Amazon ECS Fargate behind a load
+> balancer restricted to your IP. Locally, see [code/README.md](code/README.md).
 
 ### After you clone: the exact path and commands
 
@@ -109,7 +134,7 @@ The defaults work out of the box; every value already has a sensible default in 
 | `environment` | `dev` (or `prod`) | Leave as-is; it matches the file name and drives naming, tags, and the Spring profile. Must be `dev`, `staging`, or `prod`. |
 | `app_name` | `autonomous-agent` / `idp-agent` | You want different resource names. Lowercase letters, numbers, and hyphens only. |
 | `image_tag` | `latest` | Almost never by hand. The deploy script sets a timestamped tag automatically after it pushes the image. |
-| `memory_id` | `""` (empty) | You created an AgentCore Memory resource and want the agent to keep conversation history. Paste the id, or pass it as `AGENTCORE_MEMORY_ID` (see below). |
+| `memory_id` | `""` (empty) | You created an AgentCore Memory resource and want the agent to keep conversation history. Paste the id, or pass it as `AGENTCORE_MEMORY_ID` (see below). When empty, Terraform adds the `stateless` Spring profile so the app starts without memory. |
 | `tags` | `CostCenter`, `Owner` | You want your own cost-allocation or ownership tags on every resource. |
 | `bedrock_model` (autonomous-agent only) | `global.anthropic.claude-sonnet-4-5-...` | You want a different Claude model or inference profile. It must be enabled in your Region. |
 | `ecr_kms_key_arn` (autonomous-agent only) | `""` (AWS-managed AES256) | You require customer-managed KMS encryption on the ECR repo. Provide a KMS key ARN. |
@@ -149,7 +174,7 @@ There is no backend or remote state to configure first. State is local by defaul
 
 2. Enable Amazon Bedrock model access for the Claude model you plan to use, in the same Region you deploy to (Bedrock console > Model access).
 
-3. Install Terraform >= 1.5 and a container engine that builds `linux/arm64` images. The build-and-push script uses `docker buildx build --platform linux/arm64`. AgentCore Runtime runs ARM64, so an ARM64 image is required, not optional.
+3. Install Terraform >= 1.6 and a container engine that builds `linux/arm64` images. The build-and-push script uses `docker buildx build --platform linux/arm64`. AgentCore Runtime runs ARM64, so an ARM64 image is required, not optional.
 
    ```bash
    terraform -version
@@ -205,15 +230,17 @@ mvn -q clean package -DskipTests
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 REGION=us-east-1
 REPO=autonomous-agent-dev
+# The repository is IMMUTABLE, so use a new tag for every build.
+IMAGE_TAG=$(date +%Y%m%d%H%M%S)
 aws ecr get-login-password --region $REGION \
   | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
 docker buildx build --platform linux/arm64 \
-  -t ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${REPO}:latest --push .
+  -t ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${REPO}:${IMAGE_TAG} --push .
 
 # 3. Create the IAM role and the AgentCore Runtime pointing at that image.
 cd terraform
 terraform apply -input=false -auto-approve \
-  -var-file="environments/dev.tfvars" -var "memory_id=" -var "image_tag=latest"
+  -var-file="environments/dev.tfvars" -var "memory_id=" -var "image_tag=${IMAGE_TAG}"
 ```
 
 ### Validate the deployment on AWS
@@ -237,18 +264,24 @@ aws bedrock-agentcore-control get-agent-runtime \
   --agent-runtime-id "$RUNTIME_ID" \
   --query 'status' --output text        # expect READY
 
-# 3. Invoke the runtime with a test prompt (data plane)
+# 3. Invoke the runtime with a test prompt (data plane).
+#    - The session id must be at least 33 characters (a UUID is 36); reuse it
+#      for follow-up turns of the same conversation.
+#    - CLI v2 treats --payload as base64 unless told otherwise.
 RUNTIME_ARN=$(terraform output -raw runtime_arn)
 aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-arn "$RUNTIME_ARN" \
+  --runtime-session-id "$(uuidgen)" \
+  --content-type application/json \
+  --cli-binary-format raw-in-base64-out \
   --payload '{"prompt":"Plan a 3-day trip to Tokyo"}' \
   response.json
 cat response.json
 ```
 
-For `idp-agent`, use the same commands from `code/idp-agent/terraform` with repository `idp-agent-dev`, and send a document-style prompt.
+For `idp-agent`, use the same commands from `code/idp-agent/terraform` with repository `idp-agent-dev`, and send a document-style payload, for example `'{"agentType":"LAWYER","content":"LEASE AGREEMENT ... (no signatures)","mimeType":"text/plain","question":"Is this signed?"}'`.
 
-You can also watch runtime logs in CloudWatch Logs (log group `/aws/bedrock-agentcore/<runtime-name>`) and check metrics in the CloudWatch console.
+You can also watch runtime logs in CloudWatch Logs (log group `/aws/bedrock-agentcore/runtimes/<agent_id>-DEFAULT`) and check metrics in the CloudWatch generative AI observability console.
 
 ### Environments
 
