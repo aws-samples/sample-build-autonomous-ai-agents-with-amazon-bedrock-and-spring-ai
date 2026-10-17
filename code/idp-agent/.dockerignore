@@ -1,0 +1,5 @@
+# The image only needs the packaged jar (see Dockerfile). Excluding everything
+# else keeps the build context small and keeps .env files, samples and Terraform
+# state out of it. Run `mvn package` before `docker build`.
+*
+!target/idp-agent.jar
