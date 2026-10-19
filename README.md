@@ -1,24 +1,25 @@
 # Build Autonomous AI Agents with Amazon Bedrock and Spring AI (Java)
 
-Companion repository for the AWS blog post of the same name. It contains the blog draft
-and two runnable, production-grade examples built on **Amazon Bedrock**, **Spring AI**, and
-the open-source [**Spring AI AgentCore**](https://github.com/spring-ai-community/spring-ai-agentcore) SDK.
+Companion code for the AWS blog post of the same name: two runnable, production-grade
+examples built on **Amazon Bedrock**, **Spring AI**, and the open-source
+[**Spring AI AgentCore**](https://github.com/spring-ai-community/spring-ai-agentcore) SDK.
 
 ## Contents
 
 ```
 .
-├── blog/
-│   └── build-autonomous-ai-agents-with-amazon-bedrock-and-spring-ai.md
+├── pom.xml                    # Maven parent: builds both backends
+├── README.md
+├── SECURITY.md · CONTRIBUTING.md · CODE_OF_CONDUCT.md · LICENSE · NOTICE
 └── code/
     ├── README.md              # Run everything locally (with or without Docker)
     ├── docker-compose.yml     # Full local stack: 2 backends + 2 UIs + landing page
-    ├── ecs-stack/             # Terraform: browser URLs on AWS (ECS Fargate + load balancer)
-    ├── landing-page/          # Static page linking both agents (nginx image)
     ├── autonomous-agent/      # Spring Boot backend: tools + memory + resilience (AgentCore Runtime)
     ├── autonomous-agent-ui/   # React UI for the travel agent (nginx image)
     ├── idp-agent/             # Spring Boot backend: multi-agent IDP system (AgentCore Runtime or EKS)
-    └── idp-agent-ui/          # React UI for the IDP console (nginx image)
+    ├── idp-agent-ui/          # React UI for the IDP console (nginx image)
+    ├── landing-page/          # Static page linking both agents (nginx image)
+    └── ecs-stack/             # Terraform: HTTPS browser URLs on AWS (ECS Fargate + load balancer)
 ```
 
 Each folder is one deployable: the backends are Maven modules packaged as ARM64 images for
@@ -44,7 +45,7 @@ A multi-agent IDP system with a React UI:
   (e.g. "Document appears unsigned").
 - **Observability** (Micrometer `@Observed`, domain metrics, Prometheus, structured logs),
   **resilience**, **12-factor config**, **graceful shutdown**.
-- **Modular Terraform** (ecr / iam / agentcore-runtime / eks-app) with per-environment
+- **Modular Terraform** (ecr / iam / agentcore-runtime / eks-irsa / eks-workload) with per-environment
   tfvars, deploy on **AgentCore Runtime** or an existing **Amazon EKS** cluster (IRSA).
 
 See [code/idp-agent/README.md](code/idp-agent/README.md) and
@@ -52,16 +53,18 @@ See [code/idp-agent/README.md](code/idp-agent/README.md) and
 
 ## Architecture
 
-Spring AI turns plain Spring beans into managed Amazon Bedrock AgentCore capabilities, no glue code:
+Spring AI turns plain Spring beans into managed Amazon Bedrock AgentCore capabilities, no glue
+code. Both examples build one ARM64 image, push it to Amazon ECR, and run it on a serverless
+AgentCore Runtime (the IDP agent can also run on Amazon EKS with IRSA):
 
-![Spring AI AgentCore on Amazon Bedrock AgentCore](blog/diagrams/springai-agentcore-overview.svg)
+```
+code/autonomous-agent ─┐                        ┌─> AgentCore Runtime (POST /invocations, GET /ping)
+code/idp-agent ────────┴─> ARM64 image ─> ECR ──┤        ├─> Amazon Bedrock (Claude)
+                                                │        └─> AgentCore Memory · Browser · Code Interpreter
+                                                └─> optional: code/ecs-stack (UIs + backends on ECS Fargate)
+```
 
-Both examples build one ARM64 image, push it to Amazon ECR, and run it on a serverless AgentCore Runtime (the IDP agent can also run on Amazon EKS with IRSA):
-
-![Deployment architecture](blog/diagrams/deployment-architecture.svg)
-
-More diagrams, including per-app architecture and the multi-agent flow, are in
-[blog/diagrams/](blog/diagrams/README.md).
+Per-app architecture is described in each example's README.
 
 ## Quick start (local)
 
@@ -104,11 +107,12 @@ Both examples deploy the same way: they build an ARM64 container image, push it 
 
 ### After you clone: the exact path and commands
 
-Say you cloned the repo to `~/bedrock-spring-ai-agentcore-blog`. Here is the whole flow for `autonomous-agent`. For `idp-agent`, use the same steps from `code/idp-agent` instead.
+Here is the whole flow for `autonomous-agent`. For `idp-agent`, use the same steps from `code/idp-agent` instead.
 
 ```bash
-# 1. Go into the project you want to deploy
-cd ~/bedrock-spring-ai-agentcore-blog/code/autonomous-agent
+# 1. Clone and go into the project you want to deploy
+git clone https://github.com/aws-samples/sample-build-autonomous-ai-agents-with-amazon-bedrock-and-spring-ai.git
+cd sample-build-autonomous-ai-agents-with-amazon-bedrock-and-spring-ai/code/autonomous-agent
 
 # 2. (Optional) review or edit the variables for the environment
 #    File: terraform/environments/dev.tfvars   (see the table below)
@@ -133,7 +137,7 @@ The defaults work out of the box; every value already has a sensible default in 
 | `region` | `us-east-1` | You want to deploy to a different AWS Region. Make sure Bedrock model access is enabled there. |
 | `environment` | `dev` (or `prod`) | Leave as-is; it matches the file name and drives naming, tags, and the Spring profile. Must be `dev`, `staging`, or `prod`. |
 | `app_name` | `autonomous-agent` / `idp-agent` | You want different resource names. Lowercase letters, numbers, and hyphens only. |
-| `image_tag` | `latest` | Almost never by hand. The deploy script sets a timestamped tag automatically after it pushes the image. |
+| `image_tag` | not set in tfvars | Never by hand. The deploy script pushes a timestamped tag and passes it with `-var image_tag=...`; Terraform checks the tag exists in ECR (`verify_image`). |
 | `memory_id` | `""` (empty) | You created an AgentCore Memory resource and want the agent to keep conversation history. Paste the id, or pass it as `AGENTCORE_MEMORY_ID` (see below). When empty, Terraform adds the `stateless` Spring profile so the app starts without memory. |
 | `tags` | `CostCenter`, `Owner` | You want your own cost-allocation or ownership tags on every resource. |
 | `bedrock_model` (autonomous-agent only) | `global.anthropic.claude-sonnet-4-5-...` | You want a different Claude model or inference profile. It must be enabled in your Region. |
@@ -146,7 +150,6 @@ The most common real edit is just `region`, and `memory_id` if you want memory. 
 region      = "us-west-2"
 environment = "dev"
 app_name    = "autonomous-agent"
-image_tag   = "latest"
 memory_id   = "mem-abc123def456"   # from scripts/create-memory.sh
 
 tags = {
@@ -166,7 +169,7 @@ There is no backend or remote state to configure first. State is local by defaul
 
 ### Prerequisites, once per machine
 
-1. Install and configure the AWS CLI (see the AWS CLI setup notes in the chapter or the [official guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)), then confirm your identity:
+1. Install and configure the AWS CLI v2 (see the [official guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)), then confirm your identity:
 
    ```bash
    aws sts get-caller-identity
@@ -174,7 +177,7 @@ There is no backend or remote state to configure first. State is local by defaul
 
 2. Enable Amazon Bedrock model access for the Claude model you plan to use, in the same Region you deploy to (Bedrock console > Model access).
 
-3. Install Terraform >= 1.6 and a container engine that builds `linux/arm64` images. The build-and-push script uses `docker buildx build --platform linux/arm64`. AgentCore Runtime runs ARM64, so an ARM64 image is required, not optional.
+3. Install Terraform >= 1.6 and a container engine that builds `linux/arm64` images. The build-and-push script uses `docker buildx build --platform linux/arm64` when Docker is available and falls back to the Jib Maven plugin (no Docker daemon) otherwise; force one with `BUILDER=docker` or `BUILDER=jib`. AgentCore Runtime runs ARM64, so an ARM64 image is required, not optional.
 
    ```bash
    terraform -version
@@ -300,7 +303,7 @@ Tear everything down when you are finished. Each project has a cleanup script, o
 cd code/autonomous-agent
 ./scripts/cleanup.sh dev
 # or, by hand:
-cd terraform && terraform destroy -var-file="environments/dev.tfvars" -var "memory_id="
+cd terraform && terraform destroy -var-file="environments/dev.tfvars" -var "memory_id=" -var "verify_image=false"
 
 # idp-agent
 cd code/idp-agent && ./scripts/cleanup.sh dev

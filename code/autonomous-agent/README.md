@@ -32,14 +32,11 @@ Bedrock and Spring AI (Java)*.
 
 ## Architecture
 
-![Autonomous agent architecture](../../blog/diagrams/autonomous-agent-architecture.svg)
-
 The React UI calls the Spring Boot app through the AgentCore Runtime contract
 (`POST /invocations`) or the UI endpoints. `AgentController` adapts transport, an optional
 `GuardrailService` screens the prompt, and `AgentService` drives a Spring AI `ChatClient`
 with local tools, managed Browser/Code Interpreter providers, AgentCore Memory advisors,
-and a Resilience4j circuit breaker + retry around the Amazon Bedrock call. See more diagrams
-in [blog/diagrams/](../../blog/diagrams/README.md).
+and a Resilience4j circuit breaker + retry around the Amazon Bedrock call.
 
 ## Project layout
 

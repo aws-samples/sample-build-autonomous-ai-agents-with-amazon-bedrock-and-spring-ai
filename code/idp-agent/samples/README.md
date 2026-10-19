@@ -15,7 +15,7 @@ IDP backend on port 8081.
 | `utility-bill.pdf` | GENERAL | Summarize this bill and tell me the due date and late fee. | Clean structured summary; no alerts |
 
 The agents are multimodal, so they read the PDF directly. The matching `.txt` files are the
-editable sources used to generate the PDFs (`blog/build/gen-samples-pdf.mjs`); you can also
+editable text sources the PDFs were generated from; you can also
 upload your own PDF, PNG, or JPG.
 
 ## Try them with curl

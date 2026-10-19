@@ -37,18 +37,6 @@ unsigned, route to manual review."*
 
 ## Architecture
 
-The full agentic reference architecture this system targets (numbered 1–11, request to grounded answer):
-
-![Reference architecture](../../blog/diagrams/agentic-idp-reference-architecture.svg)
-
-The system architecture as implemented in this repo:
-
-![IDP agent architecture](../../blog/diagrams/idp-agent-architecture.svg)
-
-And the decision flow one document takes through `DocumentOrchestrator.process()`:
-
-![Multi-agent flow](../../blog/diagrams/multi-agent-flow.svg)
-
 The runtime flow in this repo:
 
 ```mermaid
