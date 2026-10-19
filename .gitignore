@@ -40,7 +40,5 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Internal review notes kept locally, not part of the published sample or blog
-blog/agentcore-alignment-REVIEW.md
-blog/blog-v20-REVIEW-ISSUES.md
-blog/agentcore-bug-ISSUES.md
+# Blog drafts, diagrams and review notes are kept locally, not in this repo
+blog/
