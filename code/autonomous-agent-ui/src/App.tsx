@@ -39,8 +39,13 @@ const SUGGESTIONS: Suggestion[] = [
 
 const THEME_KEY = 'agent-theme';
 
+// The session id scopes AgentCore conversation memory, so it must be unguessable.
+// crypto.getRandomValues is a CSPRNG and, unlike crypto.randomUUID, also works on
+// plain-HTTP origins. 128 bits as 32 hex chars gives a 36-char id (AgentCore needs >= 33).
 function newSessionId(): string {
-  return `web-${Math.random().toString(36).slice(2, 10)}`;
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `web-${hex}`;
 }
 
 export function App() {

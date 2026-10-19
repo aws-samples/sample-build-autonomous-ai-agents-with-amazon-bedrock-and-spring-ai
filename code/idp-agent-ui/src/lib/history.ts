@@ -61,7 +61,7 @@ export function addHistory(
   result: DocumentResult,
 ): HistoryItem {
   const item: HistoryItem = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`,
     ts: Date.now(),
     agentType: result.agentType,
     documentType: result.extraction?.documentType ?? 'UNKNOWN',
