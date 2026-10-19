@@ -5,10 +5,11 @@ landing page cannot run there. This stack runs them on Amazon ECS Fargate (ARM64
 the same backend images the AgentCore deploys pushed:
 
 ```
-you (allowed IP) --> Application Load Balancer
-                       :80   landing-page
-                       :8081 autonomous-agent-ui --Service Connect--> autonomous-agent
-                       :8082 idp-agent-ui        --Service Connect--> idp-agent
+you (allowed IP) --HTTPS--> Application Load Balancer (public subnets)
+                              :443  landing-page          (:80 redirects to :443)
+                              :8081 autonomous-agent-ui --Service Connect--> autonomous-agent
+                              :8082 idp-agent-ui        --Service Connect--> idp-agent
+                            ECS tasks in private subnets --NAT gateway--> ECR, Bedrock, AgentCore
 ```
 
 - The backends are not public. Each UI's nginx proxies `/api` and `/ping` to its backend.
@@ -16,9 +17,20 @@ you (allowed IP) --> Application Load Balancer
   task role for Amazon Bedrock plus AgentCore Browser and Code Interpreter.
 - The load balancer accepts only `allowed_cidrs`; `0.0.0.0/0` is rejected because the UIs
   have no real authentication (the IDP sign-in is a demo).
-- HTTP only, no domain or certificate. Add ACM + HTTPS before using it beyond validation.
-- Cost: roughly $50-80/month while running (load balancer plus five small Fargate tasks).
-  Destroy it when you are done.
+- Security defaults: tasks have no public IPs; TLS 1.2+ on every listener; a customer-managed
+  KMS key (rotation on) encrypts the ECR repositories and log groups; logs are kept 365 days;
+  VPC flow logs, Container Insights, and load balancer deletion protection are on.
+- Cost: roughly $90-120/month while running (load balancer, NAT gateway, five small Fargate
+  tasks, KMS key). Destroy it when you are done.
+
+### Certificate
+
+| Setting | Result |
+|---|---|
+| `certificate_arn` and `domain_name` set | Trusted ACM certificate. Point a DNS record for `domain_name` at the load balancer. |
+| Both empty (default) | A self-signed certificate for the load balancer DNS name is imported into ACM. Browsers warn once per port (443, 8081, 8082); accept each before the landing page status checks turn green. Its private key is in Terraform state (git-ignored). |
+
+Use a real certificate for anything beyond a short validation.
 
 ## Deploy
 
@@ -70,6 +82,8 @@ Logs: CloudWatch log groups `/ecs/agentcore-web-<env>/<service>`.
 ./scripts/cleanup.sh dev
 ```
 
-This removes the services, load balancer, VPC, and the three web ECR repositories. The
+The script first turns off load balancer deletion protection, then destroys the services,
+load balancer, NAT gateway, VPC, and the three web ECR repositories, and schedules the KMS
+key for deletion (7 days). The
 AgentCore Runtime stacks and their repositories are separate; clean them up with their own
 `scripts/cleanup.sh`.

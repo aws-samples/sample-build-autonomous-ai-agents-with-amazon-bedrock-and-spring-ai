@@ -74,9 +74,36 @@ variable "vpc_cidr" {
 }
 
 variable "log_retention_days" {
-  description = "CloudWatch Logs retention for all services."
+  description = "CloudWatch Logs retention for service logs and VPC flow logs (at least one year)."
   type        = number
-  default     = 14
+  default     = 365
+
+  validation {
+    condition     = var.log_retention_days >= 365
+    error_message = "log_retention_days must be at least 365."
+  }
+}
+
+variable "certificate_arn" {
+  description = <<-EOT
+    ACM certificate ARN for the HTTPS listeners, covering domain_name. Leave
+    empty to import a self-signed certificate for the load balancer DNS name
+    (browsers will warn until you accept it).
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "domain_name" {
+  description = "DNS name users browse to (must match certificate_arn and point at the load balancer). Empty uses the load balancer DNS name."
+  type        = string
+  default     = ""
+}
+
+variable "alb_deletion_protection" {
+  description = "Deletion protection on the load balancer. scripts/cleanup.sh turns it off before destroying."
+  type        = bool
+  default     = true
 }
 
 variable "tags" {

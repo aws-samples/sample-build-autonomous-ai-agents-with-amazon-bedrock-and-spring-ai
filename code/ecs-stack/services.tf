@@ -113,9 +113,9 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.public[*].id
+    subnets          = aws_subnet.private[*].id
     security_groups  = [aws_security_group.tasks.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   service_connect_configuration {
@@ -144,6 +144,9 @@ resource "aws_ecs_service" "backend" {
     enable   = true
     rollback = true
   }
+
+  # Tasks pull images and call AWS APIs through the NAT gateway.
+  depends_on = [aws_route_table_association.private]
 }
 
 # --- Web apps (landing page and UIs) --------------------------------------------
@@ -196,9 +199,9 @@ resource "aws_ecs_service" "web" {
   health_check_grace_period_seconds = 30
 
   network_configuration {
-    subnets          = aws_subnet.public[*].id
+    subnets          = aws_subnet.private[*].id
     security_groups  = [aws_security_group.tasks.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   load_balancer {
@@ -221,5 +224,5 @@ resource "aws_ecs_service" "web" {
     rollback = true
   }
 
-  depends_on = [aws_lb_listener.web, aws_ecs_service.backend]
+  depends_on = [aws_lb_listener.web, aws_ecs_service.backend, aws_route_table_association.private]
 }

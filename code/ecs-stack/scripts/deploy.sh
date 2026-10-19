@@ -1,6 +1,7 @@
 #!/bin/bash
 # Deploys the browser-facing web stack on Amazon ECS Fargate:
-#   load balancer -> landing page (:80), travel UI (:8081), IDP console (:8082)
+#   HTTPS load balancer -> landing page (:443), travel UI (:8081), IDP console (:8082)
+#   ECS tasks run in private subnets (no public IPs) behind a NAT gateway
 #   UIs -> Service Connect -> autonomous-agent / idp-agent backends (not public)
 #
 # Prerequisite: the backend images exist in ECR. Run the AgentCore deploys first

@@ -20,16 +20,17 @@ locals {
   }
 
   listener_ports = {
-    landing   = 80
+    landing   = 443
     travel_ui = 8081
     idp_ui    = 8082
   }
 
-  # Browser-facing URLs (HTTP, see alb.tf).
+  # Browser-facing host and HTTPS URLs (see alb.tf and certificate.tf).
+  host = var.domain_name != "" ? var.domain_name : aws_lb.this.dns_name
   urls = {
-    landing   = "http://${aws_lb.this.dns_name}"
-    travel_ui = "http://${aws_lb.this.dns_name}:8081"
-    idp_ui    = "http://${aws_lb.this.dns_name}:8082"
+    landing   = "https://${local.host}"
+    travel_ui = "https://${local.host}:8081"
+    idp_ui    = "https://${local.host}:8082"
   }
 
   # ECS services are created only once the UI images exist (second apply).
@@ -51,7 +52,8 @@ resource "aws_ecr_repository" "web" {
   }
 
   encryption_configuration {
-    encryption_type = "AES256"
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.this.arn
   }
 }
 
@@ -80,6 +82,7 @@ resource "aws_cloudwatch_log_group" "service" {
 
   name              = "/ecs/${local.prefix}/${each.key}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.this.arn
 }
 
 # --- Cluster and Service Connect namespace ---------------------------------------
@@ -98,6 +101,6 @@ resource "aws_ecs_cluster" "this" {
 
   setting {
     name  = "containerInsights"
-    value = "disabled"
+    value = "enabled"
   }
 }
