@@ -108,6 +108,7 @@ resource "aws_iam_role_policy" "this" {
           "bedrock-agentcore:ListEvents",
           "bedrock-agentcore:DeleteEvent",
           "bedrock-agentcore:ListSessions",
+          "bedrock-agentcore:ListMemoryRecords",
           "bedrock-agentcore:RetrieveMemoryRecords",
           "bedrock-agentcore:GetMemory"
         ]

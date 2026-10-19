@@ -112,6 +112,7 @@ data "aws_iam_policy_document" "permissions" {
       "bedrock-agentcore:ListEvents",
       "bedrock-agentcore:DeleteEvent",
       "bedrock-agentcore:ListSessions",
+      "bedrock-agentcore:ListMemoryRecords",
       "bedrock-agentcore:RetrieveMemoryRecords",
       "bedrock-agentcore:GetMemory"
     ]
