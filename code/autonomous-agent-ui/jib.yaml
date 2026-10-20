@@ -1,0 +1,34 @@
+# Docker-free image build with Jib CLI (equivalent to the Dockerfile serve stage).
+# Run `npm run build` first, then from this folder:
+#   jib build --build-file=jib.yaml --target=<registry>/<repo>:<tag>
+apiVersion: jib/v1alpha1
+kind: BuildFile
+
+from:
+  image: docker.io/nginxinc/nginx-unprivileged:1.30-alpine
+  platforms:
+    - architecture: arm64
+      os: linux
+
+creationTime: ${CREATION_TIME}
+
+environment:
+  BACKEND_URL: "http://autonomous-agent:8080"
+
+exposedPorts:
+  - "8080"
+
+user: "101"
+entrypoint: ["/docker-entrypoint.sh"]
+cmd: ["nginx", "-g", "daemon off;"]
+
+layers:
+  entries:
+    - name: nginx-config
+      files:
+        - src: nginx.conf.template
+          dest: /etc/nginx/templates/default.conf.template
+    - name: static-site
+      files:
+        - src: dist
+          dest: /usr/share/nginx/html

@@ -50,19 +50,52 @@ resource "aws_iam_role" "this" {
 # Least-privilege: only Bedrock model invocation and the AgentCore Memory actions
 # the app uses, scoped to the configured memory resource.
 data "aws_iam_policy_document" "permissions" {
+  # Inference profiles (including global.*) in this account and region.
   statement {
-    sid    = "BedrockModelInvocation"
+    sid    = "BedrockInferenceProfile"
     effect = "Allow"
     actions = [
       "bedrock:InvokeModel",
       "bedrock:InvokeModelWithResponseStream"
     ]
-    # Scoped to the deployment region and account (foundation models are
-    # AWS-owned so carry no account segment; inference profiles are account-owned).
-    resources = [
-      "arn:aws:bedrock:${var.region}::foundation-model/*",
-      "arn:aws:bedrock:${var.region}:${var.account_id}:inference-profile/*"
+    resources = ["arn:aws:bedrock:${var.region}:${var.account_id}:inference-profile/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [var.region]
+    }
+  }
+
+  # Foundation models reached through an inference profile. Global cross-Region
+  # inference also authorizes the Region-less ARN arn:aws:bedrock:::foundation-model/...
+  # with aws:RequestedRegion set to "unspecified", so no Region condition here;
+  # it is scoped to calls made through this account's inference profiles instead.
+  statement {
+    sid    = "BedrockFoundationModelViaProfile"
+    effect = "Allow"
+    actions = [
+      "bedrock:InvokeModel",
+      "bedrock:InvokeModelWithResponseStream"
     ]
+    resources = ["arn:aws:bedrock:*::foundation-model/*"]
+
+    condition {
+      test     = "StringLike"
+      variable = "bedrock:InferenceProfileArn"
+      values   = ["arn:aws:bedrock:${var.region}:${var.account_id}:inference-profile/*"]
+    }
+  }
+
+  # Direct, in-Region foundation model IDs (no inference profile).
+  statement {
+    sid    = "BedrockFoundationModelInRegion"
+    effect = "Allow"
+    actions = [
+      "bedrock:InvokeModel",
+      "bedrock:InvokeModelWithResponseStream"
+    ]
+    resources = ["arn:aws:bedrock:${var.region}::foundation-model/*"]
 
     condition {
       test     = "StringEquals"
@@ -78,7 +111,10 @@ data "aws_iam_policy_document" "permissions" {
       "bedrock-agentcore:CreateEvent",
       "bedrock-agentcore:ListEvents",
       "bedrock-agentcore:DeleteEvent",
-      "bedrock-agentcore:RetrieveMemoryRecords"
+      "bedrock-agentcore:ListSessions",
+      "bedrock-agentcore:ListMemoryRecords",
+      "bedrock-agentcore:RetrieveMemoryRecords",
+      "bedrock-agentcore:GetMemory"
     ]
     resources = [var.memory_resource_arn]
 

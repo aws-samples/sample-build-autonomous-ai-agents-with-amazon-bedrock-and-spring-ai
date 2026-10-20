@@ -9,9 +9,11 @@ cd "$(dirname "$0")/../terraform"
 
 VARFILE="environments/${ENVIRONMENT}.tfvars"
 terraform workspace select "$ENVIRONMENT"
+# verify_image=false: destroy must not depend on the image still being in ECR.
 terraform destroy -input=false -auto-approve \
   -var-file="$VARFILE" \
-  -var "memory_id=${AGENTCORE_MEMORY_ID:-}"
+  -var "memory_id=${AGENTCORE_MEMORY_ID:-}" \
+  -var "verify_image=false"
 
 echo "Destroyed ${ENVIRONMENT} resources."
 echo "If you created an AgentCore Memory resource, delete it separately with:"

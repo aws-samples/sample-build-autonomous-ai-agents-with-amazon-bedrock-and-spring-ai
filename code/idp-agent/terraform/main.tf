@@ -32,17 +32,33 @@ module "iam" {
   tags                = local.tags
 }
 
+# The runtime can only start from an image that is already in ECR. Reading it
+# here makes `terraform plan` fail fast ("image not found") when image_tag was
+# never pushed, instead of creating a runtime that cannot start. Use
+# scripts/deploy.sh, which creates the repository, pushes a tagged image, and
+# then applies with -var image_tag=<that tag>.
+data "aws_ecr_image" "agent" {
+  count = var.verify_image ? 1 : 0
+
+  repository_name = module.ecr.repository_name
+  image_tag       = var.image_tag
+}
+
 module "runtime" {
   source       = "./modules/agentcore-runtime"
   runtime_name = local.runtime_name
   role_arn     = module.iam.role_arn
   image_uri    = local.image_uri
 
+  depends_on = [data.aws_ecr_image.agent]
+
   environment_variables = {
-    AGENTCORE_MEMORY_ID    = var.memory_id
-    AWS_REGION             = var.region
-    LOG_FORMAT             = "ecs"
-    SPRING_PROFILES_ACTIVE = var.environment
+    AGENTCORE_MEMORY_ID = var.memory_id
+    AWS_REGION          = var.region
+    LOG_FORMAT          = "ecs"
+    # Without a memory id the AgentCore Memory starters fail at start-up, so add
+    # the "stateless" profile, which turns off only the memory auto-configuration.
+    SPRING_PROFILES_ACTIVE = var.memory_id == "" ? "${var.environment},stateless" : var.environment
   }
 
   tags = local.tags

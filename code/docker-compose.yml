@@ -1,0 +1,90 @@
+# Runs the full local stack: both agent backends, both UIs, and the landing page.
+#
+#   cd code
+#   mvn -f .. -q clean package -DskipTests   # build both backend jars first
+#   docker compose up --build
+#   open http://localhost:3000
+#
+# AWS credentials: the backends call Amazon Bedrock, so they need credentials.
+# Your ~/.aws folder is mounted read-only; pick a profile with AWS_PROFILE, or
+# export AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN instead.
+#
+# Port layout (same as the non-Docker local run):
+#   3000 landing page | 5173 travel UI | 5174 IDP UI | 8080 travel backend | 8081 IDP backend
+
+x-aws-volume: &aws-volume
+  type: bind
+  source: ${HOME:-${USERPROFILE}}/.aws
+  target: /home/appuser/.aws
+  read_only: true
+
+# Backend environment. AWS_PROFILE and the key variables are listed without
+# values, so each is passed through only when it is set in your shell (an empty
+# AWS_PROFILE would make the AWS SDK look for a profile named "").
+# The local Spring profile disables AgentCore Memory, Browser and Code
+# Interpreter, so only Amazon Bedrock access is required.
+services:
+  autonomous-agent:
+    build: ./autonomous-agent
+    image: autonomous-agent:local
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - BEDROCK_MODEL=${BEDROCK_MODEL:-global.anthropic.claude-sonnet-4-5-20250929-v1:0}
+      - AWS_PROFILE
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+    volumes:
+      - *aws-volume
+    ports:
+      - "8080:8080"
+
+  idp-agent:
+    build: ./idp-agent
+    image: idp-agent:local
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_PROFILE
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+    volumes:
+      - *aws-volume
+    ports:
+      - "8081:8080"
+
+  autonomous-agent-ui:
+    build: ./autonomous-agent-ui
+    image: autonomous-agent-ui:local
+    environment:
+      BACKEND_URL: http://autonomous-agent:8080
+    depends_on:
+      autonomous-agent:
+        condition: service_healthy
+    ports:
+      - "5173:8080"
+
+  idp-agent-ui:
+    build: ./idp-agent-ui
+    image: idp-agent-ui:local
+    environment:
+      BACKEND_URL: http://idp-agent:8080
+    depends_on:
+      idp-agent:
+        condition: service_healthy
+    ports:
+      - "5174:8080"
+
+  landing-page:
+    build: ./landing-page
+    image: agentcore-samples-landing-page:local
+    environment:
+      # URLs as seen from the browser on your machine.
+      AUTONOMOUS_UI_URL: http://localhost:5173
+      AUTONOMOUS_API_URL: http://localhost:8080
+      IDP_UI_URL: http://localhost:5174
+      IDP_API_URL: http://localhost:8081
+    ports:
+      - "3000:8080"

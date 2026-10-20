@@ -122,6 +122,15 @@ resource "kubernetes_deployment_v1" "this" {
             name  = "AGENTCORE_MEMORY_ID"
             value = var.memory_id
           }
+          # Without a memory id the AgentCore Memory starters fail at start-up;
+          # the "stateless" profile turns off only their auto-configuration.
+          dynamic "env" {
+            for_each = var.memory_id == "" ? [1] : []
+            content {
+              name  = "SPRING_PROFILES_ACTIVE"
+              value = "stateless"
+            }
+          }
           env {
             name  = "LOG_FORMAT"
             value = "ecs"

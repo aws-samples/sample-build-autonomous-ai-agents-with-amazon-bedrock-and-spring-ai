@@ -91,23 +91,56 @@ resource "aws_iam_role_policy" "this" {
         }
       },
       {
-        Sid    = "BedrockModelInvocation"
+        # Inference profiles (including global.*) in this account and region.
+        Sid    = "BedrockInferenceProfile"
         Effect = "Allow"
         Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"]
         Resource = [
-          "arn:aws:bedrock:${var.region}::foundation-model/*",
           "arn:aws:bedrock:${var.region}:${var.account_id}:inference-profile/*"
         ]
         Condition = { StringEquals = { "aws:RequestedRegion" = var.region } }
       },
       {
+        # Foundation models reached through an inference profile. Global
+        # cross-Region inference also authorizes the Region-less ARN
+        # arn:aws:bedrock:::foundation-model/... with aws:RequestedRegion set to
+        # "unspecified", so this statement must not carry a Region condition.
+        # It is scoped instead to calls made through this account's profiles.
+        Sid    = "BedrockFoundationModelViaProfile"
+        Effect = "Allow"
+        Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"]
+        Resource = [
+          "arn:aws:bedrock:*::foundation-model/*"
+        ]
+        Condition = {
+          StringLike = {
+            "bedrock:InferenceProfileArn" = "arn:aws:bedrock:${var.region}:${var.account_id}:inference-profile/*"
+          }
+        }
+      },
+      {
+        # Direct, in-Region foundation model IDs (no inference profile).
+        Sid    = "BedrockFoundationModelInRegion"
+        Effect = "Allow"
+        Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"]
+        Resource = [
+          "arn:aws:bedrock:${var.region}::foundation-model/*"
+        ]
+        Condition = { StringEquals = { "aws:RequestedRegion" = var.region } }
+      },
+      {
+        # ListSessions backs user-level session lookups in the SDK memory module;
+        # GetMemory lets long-term auto-discovery read the memory's strategies.
         Sid    = "AgentCoreMemoryAccess"
         Effect = "Allow"
         Action = [
           "bedrock-agentcore:CreateEvent",
           "bedrock-agentcore:ListEvents",
           "bedrock-agentcore:DeleteEvent",
-          "bedrock-agentcore:RetrieveMemoryRecords"
+          "bedrock-agentcore:ListSessions",
+          "bedrock-agentcore:ListMemoryRecords",
+          "bedrock-agentcore:RetrieveMemoryRecords",
+          "bedrock-agentcore:GetMemory"
         ]
         Resource  = [var.memory_resource_arn]
         Condition = { StringEquals = { "aws:RequestedRegion" = var.region } }

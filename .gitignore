@@ -1,0 +1,44 @@
+# Repository-wide safety net for secrets and deployment state. Folder-level
+# .gitignore files add build output and tool caches on top of this.
+
+# Local environment files (keep the committed *.example templates)
+.env
+.env.*
+!.env.example
+
+# Terraform state, plans, and local variable files (may contain account ids,
+# ARNs, IPs). Committed per-environment files live in environments/*.tfvars.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+*.tfvars.local
+crash.log
+image-version.txt
+
+# Credentials and keys
+.aws/
+credentials
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+
+# Build output and caches
+target/
+node_modules/
+dist/
+.vite/
+*.log
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Blog drafts, diagrams and review notes are kept locally, not in this repo
+blog/

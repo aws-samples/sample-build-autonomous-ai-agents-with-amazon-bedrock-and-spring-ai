@@ -32,14 +32,11 @@ Bedrock and Spring AI (Java)*.
 
 ## Architecture
 
-![Autonomous agent architecture](../../blog/diagrams/autonomous-agent-architecture.svg)
-
 The React UI calls the Spring Boot app through the AgentCore Runtime contract
 (`POST /invocations`) or the UI endpoints. `AgentController` adapts transport, an optional
 `GuardrailService` screens the prompt, and `AgentService` drives a Spring AI `ChatClient`
 with local tools, managed Browser/Code Interpreter providers, AgentCore Memory advisors,
-and a Resilience4j circuit breaker + retry around the Amazon Bedrock call. See more diagrams
-in [blog/diagrams/](../../blog/diagrams/README.md).
+and a Resilience4j circuit breaker + retry around the Amazon Bedrock call.
 
 ## Project layout
 
@@ -63,9 +60,13 @@ autonomous-agent/
 │   ├── environments/{dev,prod}.tfvars
 │   ├── examples/complete/              # runnable end-to-end example
 │   └── modules/{ecr,iam,agentcore-runtime}/   # each with its own README + validated inputs
-├── scripts/                            # create-memory, build-and-push, deploy, cleanup
-└── ui/                                 # React + TypeScript front end (Vite), streaming + Markdown/charts
+└── scripts/                            # create-memory, build-and-push, deploy, cleanup
 ```
+
+The React front end lives next to this module in
+[`../autonomous-agent-ui/`](../autonomous-agent-ui/README.md) and ships as its own nginx
+image. To run everything (both agents, both UIs, and the landing page), see
+[`../README.md`](../README.md).
 
 ## API
 
@@ -111,8 +112,8 @@ mvn spring-boot:run "-Dspring-boot.run.profiles=local"   # http://localhost:8080
 **UI (port 5173, proxies /api to the backend on 8080)**
 
 ```bash
-cd ui
-npm install
+cd ../autonomous-agent-ui
+npm ci
 npm run dev            # http://localhost:5173
 ```
 
@@ -123,15 +124,19 @@ Interpreter is off).
 
 ### Running both sample apps at once
 
-The IDP agent also defaults to port 8080, so when you run both, start IDP on 8081 and its UI
-on 5174 (see the idp-agent README). This autonomous app stays on 8080 / 5173.
+The IDP agent runs on 8081 and its UI on 5174 locally, so both apps run side by side. The
+landing page on 3000 links them. See [`../README.md`](../README.md) for the full local
+stack, with or without Docker Compose.
 
 ### Without the UI (curl)
+
+AgentCore Runtime requires session ids of at least 33 characters, so the examples use ids
+of that length even locally.
 
 ```bash
 curl -N -X POST http://localhost:8080/invocations \
   -H "Content-Type: application/json" \
-  -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-1" \
+  -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: demo-session-0000000000000000000001" \
   -d '{"prompt":"I am flying Seattle to Tokyo next month. Weather there and a rough fare?"}'
 ```
 
@@ -146,7 +151,7 @@ booleans (both default true), for example `{"prompt":"...","guardrails":true,"me
 
 ## What you see
 
-![Autonomous agent UI](ui/docs/screenshots/autonomous-agent.png)
+![Autonomous agent UI](../autonomous-agent-ui/docs/screenshots/autonomous-agent.png)
 
 Once both processes are running, open http://localhost:5173. The screen has two parts:
 
@@ -231,8 +236,8 @@ startup is deterministic regardless of the ambient environment.
 ## Build and test
 
 ```bash
-mvn clean verify          # backend (offline resilience, tools, and metrics tests)
-cd ui && npm run build    # UI type-check + bundle
+mvn clean verify                                 # backend (offline resilience, tools, and metrics tests)
+cd ../autonomous-agent-ui && npm ci && npm run build   # UI type-check + bundle
 ```
 
 ## Deploy with Terraform (modular)
@@ -254,21 +259,24 @@ export AGENTCORE_MEMORY_ID=<printed-id>
 ./scripts/deploy.sh dev          # dev | prod
 ```
 
-Invoke the deployed runtime:
+Invoke the deployed runtime. The runtime uses IAM (SigV4) authentication, so call it through
+the AWS CLI or an AWS SDK; the session id must be at least 33 characters:
 
 ```bash
-RUNTIME_NAME=$(terraform -chdir=terraform output -raw runtime_name)
-curl -X POST \
-  "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/${RUNTIME_NAME}/invocations?qualifier=DEFAULT" \
-  -H "Content-Type: application/json" \
-  -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: prod-session-1" \
-  -d '{"prompt":"Plan a 3-day Tokyo itinerary for me."}'
+RUNTIME_ARN=$(terraform -chdir=terraform output -raw runtime_arn)
+aws bedrock-agentcore invoke-agent-runtime \
+  --agent-runtime-arn "$RUNTIME_ARN" \
+  --runtime-session-id "$(uuidgen)" \
+  --content-type application/json \
+  --cli-binary-format raw-in-base64-out \
+  --payload '{"prompt":"Plan a 3-day Tokyo itinerary for me."}' \
+  response.json && cat response.json
 ```
 
 ## Cleanup
 
-AgentCore Runtime scales to zero and bills per use; you also pay for Bedrock invocations
-and a small amount of CloudWatch/ECR storage.
+AgentCore Runtime is consumption-priced: you pay per second for the CPU and memory the agent
+uses, plus Bedrock tokens and a small amount of CloudWatch/ECR storage.
 
 ```bash
 ./scripts/cleanup.sh dev         # terraform destroy for the environment

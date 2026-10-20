@@ -49,10 +49,11 @@ module "runtime" {
   image_uri    = local.image_uri
 
   environment_variables = {
-    AGENTCORE_MEMORY_ID    = var.memory_id
-    AWS_REGION             = var.region
-    LOG_FORMAT             = "ecs"
-    SPRING_PROFILES_ACTIVE = var.environment
+    AGENTCORE_MEMORY_ID = var.memory_id
+    AWS_REGION          = var.region
+    LOG_FORMAT          = "ecs"
+    # Add the "stateless" profile when no memory id is set (see ../../main.tf).
+    SPRING_PROFILES_ACTIVE = var.memory_id == "" ? "${var.environment},stateless" : var.environment
   }
 
   tags = local.tags

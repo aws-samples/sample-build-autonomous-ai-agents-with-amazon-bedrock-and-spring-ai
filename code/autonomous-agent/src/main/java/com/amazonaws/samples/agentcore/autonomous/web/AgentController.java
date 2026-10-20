@@ -61,10 +61,11 @@ public class AgentController {
 	}
 
 	@AgentCoreInvocation
-	public Flux<String> invoke(PromptRequest request, AgentCoreContext context) {
+	public ChatResponse invoke(PromptRequest request, AgentCoreContext context) {
 		String sessionId = context.getHeader(AgentCoreHeaders.SESSION_ID);
-		return this.agentService.streamChat(request.prompt(), sessionId, request.guardrailsEnabled(),
+		String content = this.agentService.chat(request.prompt(), sessionId, request.guardrailsEnabled(),
 				request.memoryEnabled());
+		return ChatResponse.of(sessionId, content);
 	}
 
 	@PostMapping(value = "/api/chat", produces = MediaType.TEXT_PLAIN_VALUE + ";charset=UTF-8")

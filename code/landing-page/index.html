@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spring AI AgentCore samples</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <!-- Endpoint URLs. Generated from environment variables in the container image. -->
+  <script src="/config.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">A</span> Spring AI AgentCore samples</div>
+  </header>
+
+  <main>
+    <p class="eyebrow">Amazon Bedrock + Spring AI</p>
+    <h1>Choose an agent.</h1>
+    <p class="intro">
+      Two independent sample applications built with Spring AI, Amazon Bedrock, and the
+      Spring AI AgentCore SDK. Each has its own backend and React UI.
+    </p>
+
+    <section class="cards" aria-label="Available agents">
+      <article class="card autonomous" data-agent="autonomous">
+        <div class="card-icon" aria-hidden="true">A</div>
+        <h2>Autonomous travel agent</h2>
+        <ul class="badges" aria-live="polite">
+          <li class="status checking" data-check="ui">UI: checking</li>
+          <li class="status checking" data-check="api">Backend: checking</li>
+        </ul>
+        <p>
+          A conversational travel-planning agent with tool calling (weather, flight prices,
+          points of interest), streaming responses, optional AgentCore Memory, guardrails, and
+          resilience controls.
+        </p>
+        <div class="actions">
+          <a class="button" data-link="ui" href="#">Open travel agent</a>
+        </div>
+      </article>
+
+      <article class="card idp" data-agent="idp">
+        <div class="card-icon" aria-hidden="true">I</div>
+        <h2>Intelligent document processing</h2>
+        <ul class="badges" aria-live="polite">
+          <li class="status checking" data-check="ui">UI: checking</li>
+          <li class="status checking" data-check="api">Backend: checking</li>
+        </ul>
+        <p>
+          A multi-agent document workflow that classifies uploads, routes them to specialist
+          agents (Lawyer, Mortgage, Insurance, Tax, General), evaluates business rules, raises
+          alerts, and sends low-confidence results to human review.
+        </p>
+        <div class="actions">
+          <a class="button" data-link="ui" href="#">Open IDP console</a>
+        </div>
+      </article>
+    </section>
+
+    <section class="ports" aria-labelledby="endpoints-heading">
+      <h2 id="endpoints-heading">Endpoints</h2>
+      <ul id="endpoint-list"></ul>
+    </section>
+  </main>
+
+  <script src="/main.js"></script>
+</body>
+</html>
